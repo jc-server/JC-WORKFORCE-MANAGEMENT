@@ -1,5 +1,5 @@
 -- ========================================
--- 001_initial_schema.sql
+-- 001_initial_schema.sql (Safe Version)
 -- Creates all tables for Jaiswal Workforce Management
 -- ========================================
 
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS attendance (
 );
 
 -- ========================================
--- WORKER TRANSACTIONS TABLE (Financial Ledger)
+-- WORKER TRANSACTIONS TABLE
 -- ========================================
 CREATE TABLE IF NOT EXISTS worker_transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS worker_transactions (
     transaction_type TEXT NOT NULL CHECK (transaction_type IN ('wage', 'advance', 'payment', 'adjustment')),
     amount DECIMAL(10,2) NOT NULL,
     description TEXT,
-    reference_id UUID, -- Can reference attendance.id or other transaction ids
+    reference_id UUID,
     transaction_date TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -66,16 +66,47 @@ CREATE TABLE IF NOT EXISTS audit_log (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create indexes for better performance
-CREATE INDEX idx_workers_owner_id ON workers(owner_id);
-CREATE INDEX idx_attendance_owner_id ON attendance(owner_id);
-CREATE INDEX idx_attendance_worker_id ON attendance(worker_id);
-CREATE INDEX idx_attendance_work_date ON attendance(work_date);
-CREATE INDEX idx_transactions_owner_id ON worker_transactions(owner_id);
-CREATE INDEX idx_transactions_worker_id ON worker_transactions(worker_id);
-CREATE INDEX idx_audit_owner_id ON audit_log(owner_id);
+-- ========================================
+-- CREATE INDEXES (SAFE - Check if they exist)
+-- ========================================
+DO $$ 
+BEGIN
+    -- Workers indexes
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_workers_owner_id') THEN
+        CREATE INDEX idx_workers_owner_id ON workers(owner_id);
+    END IF;
+    
+    -- Attendance indexes
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_attendance_owner_id') THEN
+        CREATE INDEX idx_attendance_owner_id ON attendance(owner_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_attendance_worker_id') THEN
+        CREATE INDEX idx_attendance_worker_id ON attendance(worker_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_attendance_work_date') THEN
+        CREATE INDEX idx_attendance_work_date ON attendance(work_date);
+    END IF;
+    
+    -- Transactions indexes
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_transactions_owner_id') THEN
+        CREATE INDEX idx_transactions_owner_id ON worker_transactions(owner_id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_transactions_worker_id') THEN
+        CREATE INDEX idx_transactions_worker_id ON worker_transactions(worker_id);
+    END IF;
+    
+    -- Audit log indexes
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_audit_owner_id') THEN
+        CREATE INDEX idx_audit_owner_id ON audit_log(owner_id);
+    END IF;
+END $$;
 
--- Add comments for documentation
+-- ========================================
+-- ADD TABLE COMMENTS
+-- ========================================
 COMMENT ON TABLE workers IS 'Stores worker information';
 COMMENT ON TABLE attendance IS 'Daily attendance records with wages';
 COMMENT ON TABLE worker_transactions IS 'Financial transactions ledger';

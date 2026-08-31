@@ -1,10 +1,8 @@
-import { formatDate, getStatusBadge, getStatusClass, getToday } from '../utils/dates.js';
-import { formatCurrency } from '../utils/money.js';
-
+// AttendanceTable Component
 export class AttendanceTable {
     render(state) {
         const monthName = this.getMonthName(state.viewMonth);
-        const today = getToday();
+        const today = new Date().toISOString().slice(0, 10);
         
         return `
             <div class="card">
@@ -72,20 +70,22 @@ export class AttendanceTable {
             
             html += `
                 <td style="text-align:center; padding:0.25rem 0.25rem;">
-                    <div class="attendance-btn-group" style="justify-content:center;">
-                        ${['present', 'absent', 'half-day'].map(s => `
-                            <button class="attendance-btn attendance-btn-${s} ${status === s ? 'active' : ''} ${isToday ? '' : 'hidden'}" 
-                                    data-action="setAttendance" 
-                                    data-worker="${workerId}" 
-                                    data-date="${dateStr}" 
-                                    data-status="${s}"
-                                    ${!isToday ? 'disabled' : ''}>
-                                ${s === 'present' ? 'P' : s === 'absent' ? 'A' : 'H'}
-                            </button>
-                        `).join('')}
-                        ${status && !isToday ? `<span class="${getStatusClass(status)}" style="font-size:0.7rem;">${status === 'present' ? 'P' : status === 'absent' ? 'A' : 'H'}</span>` : ''}
-                    </div>
-                    ${att && att.wage_amount > 0 ? `<div style="font-size:0.6rem; color:#6b7280;">${formatCurrency(att.wage_amount)}</div>` : ''}
+                    ${isToday ? `
+                        <div class="attendance-btn-group" style="justify-content:center;">
+                            ${['present', 'absent', 'half-day'].map(s => `
+                                <button class="attendance-btn attendance-btn-${s} ${status === s ? 'active' : ''}" 
+                                        data-action="setAttendance" 
+                                        data-worker="${workerId}" 
+                                        data-date="${dateStr}" 
+                                        data-status="${s}">
+                                    ${s === 'present' ? 'P' : s === 'absent' ? 'A' : 'H'}
+                                </button>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        ${status ? `<span class="${status === 'present' ? 'status-present' : status === 'absent' ? 'status-absent' : 'status-halfday'}" style="font-size:0.7rem;">${status === 'present' ? 'P' : status === 'absent' ? 'A' : 'H'}</span>` : '-'}
+                    `}
+                    ${att && att.wage_amount > 0 ? `<div style="font-size:0.6rem; color:#6b7280;">₹${att.wage_amount}</div>` : ''}
                 </td>
             `;
         }
@@ -99,7 +99,7 @@ export class AttendanceTable {
 
     escapeHtml(text) {
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = text || '';
         return div.innerHTML;
     }
 

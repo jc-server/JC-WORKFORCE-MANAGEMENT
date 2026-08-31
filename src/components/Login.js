@@ -1,3 +1,4 @@
+// Login Component
 export class Login {
     render() {
         return `

@@ -1,5 +1,4 @@
-import { formatCurrency } from '../utils/money.js';
-
+// WorkerTable Component
 export class WorkerTable {
     render(state) {
         if (state.workers.length === 0) {
@@ -45,7 +44,7 @@ export class WorkerTable {
                                 <tr>
                                     <td><strong>${this.escapeHtml(w.name)}</strong></td>
                                     <td>${this.escapeHtml(w.role || 'Worker')}</td>
-                                    <td>${formatCurrency(w.daily_rate)}</td>
+                                    <td>₹${(w.daily_rate || 0).toLocaleString()}</td>
                                     <td>
                                         <button class="btn btn-sm btn-secondary" data-action="editWorker" data-id="${w.id}">
                                             <i class="fas fa-edit"></i>
@@ -68,7 +67,7 @@ export class WorkerTable {
 
     escapeHtml(text) {
         const div = document.createElement('div');
-        div.textContent = text;
+        div.textContent = text || '';
         return div.innerHTML;
     }
 
@@ -99,7 +98,9 @@ export class WorkerTable {
         document.querySelectorAll('[data-action="deleteWorker"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const id = e.currentTarget.dataset.id;
-                app.deleteWorker(id);
+                if (confirm('Delete this worker?')) {
+                    app.deleteWorker(id);
+                }
             });
         });
     }

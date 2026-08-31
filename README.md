@@ -33,3 +33,5 @@ This app is deployed to GitHub Pages. Visit: `https://YOUR_USERNAME.github.io/ja
 - **CDN**: Supabase JS Client
 
 ## Project Structure
+
+Coming Soon

@@ -23,6 +23,7 @@ export class App {
     }
 
     async init() {
+        console.log('🔧 App initializing...');
         await this.checkAuth();
         this.render();
     }
@@ -32,8 +33,11 @@ export class App {
             const { data: { user }, error } = await supabase.auth.getUser();
             if (error) throw error;
             if (user) {
+                console.log('✅ User authenticated:', user.email);
                 this.state.user = user;
                 await this.loadData();
+            } else {
+                console.log('🔓 No user logged in');
             }
             return !!user;
         } catch (err) {
@@ -46,11 +50,16 @@ export class App {
         if (!this.state.user) return;
         
         try {
+            console.log('📊 Loading data...');
             await Promise.all([
                 this.loadWorkers(),
                 this.loadTodaySummary(),
                 this.loadAttendance()
             ]);
+            console.log('✅ Data loaded:', {
+                workers: this.state.workers.length,
+                attendance: this.state.attendance.length
+            });
         } catch (err) {
             console.error('Load data error:', err);
             this.showToast('Error loading data', 'error');
@@ -278,10 +287,12 @@ export class App {
     // ========================================
 
     showAddWorkerModal() {
+        console.log('➕ Showing Add Worker modal');
         this.showWorkerModal(null);
     }
 
     showEditWorkerModal(id) {
+        console.log('✏️ Showing Edit Worker modal for:', id);
         const worker = this.state.workers.find(w => w.id === id);
         if (worker) this.showWorkerModal(worker);
     }
@@ -293,7 +304,12 @@ export class App {
         const role = worker?.role || '';
         const dailyRate = worker?.daily_rate || '';
         
+        // Remove existing modal
+        const existing = document.getElementById('workerModal');
+        if (existing) existing.remove();
+        
         const modal = document.createElement('div');
+        modal.id = 'workerModal';
         modal.className = 'modal-overlay';
         modal.innerHTML = `
             <div class="modal-content">
@@ -346,6 +362,11 @@ export class App {
             }
             modal.remove();
         });
+        
+        // Click outside to close
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
     }
 
     showAdvanceModal(workerId) {
@@ -355,7 +376,11 @@ export class App {
             return;
         }
         
+        const existing = document.getElementById('advanceModal');
+        if (existing) existing.remove();
+        
         const modal = document.createElement('div');
+        modal.id = 'advanceModal';
         modal.className = 'modal-overlay';
         modal.innerHTML = `
             <div class="modal-content">
@@ -401,16 +426,24 @@ export class App {
             await this.issueAdvance(workerId, amount, description);
             modal.remove();
         });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
     }
 
     showProfile() {
         const user = this.state.user;
         if (!user) return;
         
+        const existing = document.getElementById('profileModal');
+        if (existing) existing.remove();
+        
         const name = user.user_metadata?.name || user.email || 'User';
         const createdAt = user.created_at ? new Date(user.created_at).toLocaleDateString('en-IN') : '';
         
         const modal = document.createElement('div');
+        modal.id = 'profileModal';
         modal.className = 'modal-overlay';
         modal.innerHTML = `
             <div class="modal-content">
@@ -443,6 +476,9 @@ export class App {
         `;
         
         document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
     }
 
     // ========================================

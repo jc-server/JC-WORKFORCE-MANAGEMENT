@@ -73,10 +73,9 @@ export class WorkerTable {
 
     attachEvents(app) {
         // Add Worker
-        const addBtn = document.querySelector('[data-action="addWorker"]');
-        if (addBtn) {
-            addBtn.addEventListener('click', () => app.showAddWorkerModal());
-        }
+        document.querySelector('[data-action="addWorker"]')?.addEventListener('click', () => {
+            app.showAddWorkerModal();
+        });
         
         // Edit Worker
         document.querySelectorAll('[data-action="editWorker"]').forEach(btn => {
@@ -98,9 +97,7 @@ export class WorkerTable {
         document.querySelectorAll('[data-action="deleteWorker"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const id = e.currentTarget.dataset.id;
-                if (confirm('Delete this worker?')) {
-                    app.deleteWorker(id);
-                }
+                app.deleteWorker(id);
             });
         });
     }

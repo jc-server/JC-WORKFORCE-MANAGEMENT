@@ -1,5 +1,8 @@
-const SUPABASE_URL = 'https://yqjuolwntlrnslaxyjsk.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxanVvbHdudGxybnNsYXh5anNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxODgyNzUsImV4cCI6MjEwMzc2NDI3NX0.eXH0tVe7kmUCKOwiwqOatSrlVONMZoblGG7_jwyPcqU';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Create Supabase client
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('Missing Supabase environment variables');
+}
+
 export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

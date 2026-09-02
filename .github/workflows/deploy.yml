@@ -25,13 +25,8 @@ jobs:
       
       - name: Inject Supabase Config
         run: |
-          # Replace Supabase URL
           sed -i "s|window.__SUPABASE_URL__ = '.*'|window.__SUPABASE_URL__ = '${{ secrets.VITE_SUPABASE_URL }}'|" index.html
-          
-          # Replace Supabase Anon Key
           sed -i "s|window.__SUPABASE_ANON_KEY__ = '.*'|window.__SUPABASE_ANON_KEY__ = '${{ secrets.VITE_SUPABASE_ANON_KEY }}'|" index.html
-          
-          # Ensure .nojekyll exists
           touch .nojekyll
       
       - name: Upload artifact

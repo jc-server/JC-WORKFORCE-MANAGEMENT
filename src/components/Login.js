@@ -18,7 +18,7 @@ export class Login {
                         <i class="fas fa-sign-in-alt"></i> Sign In
                     </button>
                 </form>
-                <p style="margin-top:1rem; font-size:0.75rem; color:#6b7280; text-align:center;">
+                <p style="margin-top:1rem; font-size:0.75rem; color:#94a3b8; text-align:center;">
                     Use your Supabase Auth credentials
                 </p>
             </div>

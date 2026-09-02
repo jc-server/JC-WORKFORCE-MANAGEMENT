@@ -211,7 +211,6 @@ export class App {
             if (status === 'present') wageAmount = worker.daily_rate;
             else if (status === 'half-day') wageAmount = worker.daily_rate / 2;
             
-            // Smart advance & overpayment handling
             let advanceOverflow = 0;
             let paymentRecorded = paymentAmount;
             
@@ -229,7 +228,6 @@ export class App {
                 }
             }
             
-            // Apply attendance
             const { data, error } = await supabase
                 .rpc('apply_attendance_with_payment', {
                     p_worker_id: workerId,
@@ -252,7 +250,6 @@ export class App {
                 this.loadWorkers()
             ]);
             
-            // Force re-render
             this.render();
             
             console.log('✅ Attendance updated and UI refreshed!');
@@ -269,7 +266,6 @@ export class App {
         try {
             console.log('💳 Updating payment:', { workerId, date, paymentAmount });
             
-            // Get existing attendance record
             const { data: attData, error: attError } = await supabase
                 .from('attendance')
                 .select('*')
@@ -283,7 +279,6 @@ export class App {
                 return;
             }
             
-            // Smart advance handling
             let advanceOverflow = 0;
             let paymentRecorded = paymentAmount;
             
@@ -301,7 +296,6 @@ export class App {
                 }
             }
             
-            // Update attendance
             const { error } = await supabase
                 .from('attendance')
                 .update({ 
@@ -313,7 +307,6 @@ export class App {
             
             if (error) throw error;
             
-            // RELOAD DATA AND RE-RENDER
             await Promise.all([
                 this.loadAttendance(),
                 this.loadTransactions(),
@@ -340,7 +333,6 @@ export class App {
             
             if (error) throw error;
             
-            // RELOAD DATA
             await Promise.all([
                 this.loadTransactions(),
                 this.loadWorkers()
@@ -388,7 +380,6 @@ export class App {
                     });
             }
             
-            // RELOAD DATA
             await Promise.all([
                 this.loadWorkers(),
                 this.loadTransactions()
@@ -461,13 +452,9 @@ export class App {
             return;
         }
         
-        // Get worker-specific attendance
         const workerAttendance = this.state.attendance.filter(a => a.worker_id === workerId);
-        
-        // Get worker-specific transactions
         const workerTransactions = this.state.transactions.filter(t => t.worker_id === workerId);
         
-        // Calculate financials
         const totalWages = workerAttendance.reduce((sum, a) => sum + (a.wage_amount || 0), 0);
         const totalPaid = workerTransactions
             .filter(t => t.transaction_type === 'payment')
@@ -477,11 +464,9 @@ export class App {
             .reduce((sum, t) => sum + t.amount, 0);
         const netBalance = totalWages - totalPaid - totalAdvances;
         
-        // Get current month attendance
         const currentMonth = this.state.viewMonth;
         const monthAttendance = workerAttendance.filter(a => a.work_date.startsWith(currentMonth));
         
-        // Create modal
         const modal = document.createElement('div');
         modal.id = 'workerProfileModal';
         modal.className = 'modal-overlay';
@@ -496,7 +481,6 @@ export class App {
                     <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
                 </div>
                 
-                <!-- Worker Info -->
                 <div class="worker-profile-info">
                     <div class="worker-profile-field">
                         <label>Daily Rate</label>
@@ -522,7 +506,6 @@ export class App {
                     </div>
                 </div>
                 
-                <!-- Month Navigation -->
                 <div class="calendar-nav">
                     <button class="btn btn-secondary btn-sm" onclick="window.__app.navigateWorkerMonth('${worker.id}', '${this.getPrevMonth(currentMonth)}')">
                         <i class="fas fa-chevron-left"></i> Prev
@@ -533,7 +516,6 @@ export class App {
                     </button>
                 </div>
                 
-                <!-- Monthly Calendar -->
                 <div class="table-wrapper">
                     <table>
                         <thead>
@@ -562,7 +544,6 @@ export class App {
         
         document.body.appendChild(modal);
         
-        // Click outside to close
         modal.addEventListener('click', (e) => {
             if (e.target === modal) modal.remove();
         });

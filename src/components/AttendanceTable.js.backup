@@ -1,3 +1,4 @@
+// AttendanceTable Component
 export class AttendanceTable {
     render(state) {
         const today = new Date().toISOString().slice(0, 10);
@@ -47,6 +48,7 @@ export class AttendanceTable {
                                 const wageRate = worker.daily_rate || 0;
                                 const paid = todayAtt ? todayAtt.payment_amount : 0;
                                 
+                                // Calculate total wage, paid, and balance
                                 const workerAtt = state.attendance.filter(a => a.worker_id === worker.id);
                                 const totalWage = workerAtt.reduce((sum, a) => sum + (a.wage_amount || 0), 0);
                                 const totalPaid = state.transactions
@@ -94,6 +96,7 @@ export class AttendanceTable {
                                                     ½
                                                 </button>
                                             </div>
+                                            ${status === 'absent' ? '<div style="font-size:0.7rem; color:#f87171; text-align:center;">No Work</div>' : ''}
                                         </td>
                                         <td>₹${wageRate.toLocaleString()}</td>
                                         <td>
@@ -149,6 +152,7 @@ export class AttendanceTable {
                 const date = e.currentTarget.dataset.date;
                 const status = e.currentTarget.dataset.status;
                 
+                // Get current payment input value
                 const paymentInput = document.querySelector(`[data-action="paymentInput"][data-worker="${workerId}"][data-date="${date}"]`);
                 const paymentAmount = paymentInput ? parseFloat(paymentInput.value) || 0 : 0;
                 
@@ -166,6 +170,17 @@ export class AttendanceTable {
                 const paymentAmount = parseFloat(e.currentTarget.value) || 0;
                 
                 console.log('💳 Payment input changed:', { workerId, date, paymentAmount });
+                
+                await app.updatePayment(workerId, date, paymentAmount);
+            });
+            
+            // Also handle blur event
+            input.addEventListener('blur', async (e) => {
+                const workerId = e.currentTarget.dataset.worker;
+                const date = e.currentTarget.dataset.date;
+                const paymentAmount = parseFloat(e.currentTarget.value) || 0;
+                
+                console.log('💳 Payment input blurred:', { workerId, date, paymentAmount });
                 
                 await app.updatePayment(workerId, date, paymentAmount);
             });

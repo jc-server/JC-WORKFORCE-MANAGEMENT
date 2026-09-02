@@ -1,3 +1,4 @@
+// Dashboard Component
 export class Dashboard {
     render(state) {
         const summary = state.todaySummary || {};
@@ -8,6 +9,20 @@ export class Dashboard {
             month: 'short', 
             year: 'numeric' 
         });
+        
+        // Calculate financial totals
+        const totalWages = state.workers.reduce((sum, w) => {
+            const workerAtt = state.attendance.filter(a => a.worker_id === w.id);
+            return sum + workerAtt.reduce((s, a) => s + (a.wage_amount || 0), 0);
+        }, 0);
+        
+        const totalPaid = state.transactions?.filter(t => t.transaction_type === 'payment')
+            .reduce((sum, t) => sum + t.amount, 0) || 0;
+        
+        const totalAdvances = state.transactions?.filter(t => t.transaction_type === 'advance')
+            .reduce((sum, t) => sum + t.amount, 0) || 0;
+        
+        const totalOutstanding = totalWages - totalPaid - totalAdvances;
         
         return `
             <header class="app-header">
@@ -31,6 +46,7 @@ export class Dashboard {
                 </div>
             </header>
             
+            <!-- Stats Grid -->
             <div class="stats-grid">
                 <div class="stat-card" style="border-left-color:#fbbf24;">
                     <div class="stat-label">
@@ -54,18 +70,20 @@ export class Dashboard {
                     <div class="stat-label">
                         <i class="fas fa-hand-holding-usd"></i> TOTAL ADVANCES
                     </div>
-                    <div class="stat-value">₹${(state.transactions?.filter(t => t.transaction_type === 'advance').reduce((sum, t) => sum + t.amount, 0) || 0).toLocaleString()}</div>
+                    <div class="stat-value">₹${totalAdvances.toLocaleString()}</div>
                 </div>
             </div>
         `;
     }
 
     attachEvents(app) {
+        // Profile button
         const profileBtn = document.querySelector('[data-action="profile"]');
         if (profileBtn) {
             profileBtn.addEventListener('click', () => app.showProfile());
         }
         
+        // Logout button
         const logoutBtn = document.querySelector('[data-action="logout"]');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => app.handleLogout());

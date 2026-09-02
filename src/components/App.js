@@ -97,18 +97,13 @@ export class App {
     }
 
     async loadWorkers() {
-        console.log('👷 Loading workers...');
         const { data, error } = await supabase
             .from('workers')
             .select('*')
             .eq('active', true)
             .order('name');
         
-        if (error) {
-            console.error('❌ Error loading workers:', error);
-            throw error;
-        }
-        
+        if (error) throw error;
         this.state.workers = data || [];
         console.log('✅ Workers loaded:', this.state.workers.length);
     }
@@ -129,7 +124,6 @@ export class App {
         const endDate = this.state.viewMonth + '-31';
         
         try {
-            console.log('📅 Loading attendance for', this.state.viewMonth);
             const { data, error } = await supabase
                 .from('attendance')
                 .select('*')
@@ -197,7 +191,16 @@ export class App {
     }
 
     // ========================================
-    // ATTENDANCE OPERATIONS - FIXED
+    // CRITICAL: FORCE RE-RENDER METHOD
+    // ========================================
+    
+    forceRender() {
+        console.log('🔄 Forcing re-render...');
+        this.render();
+    }
+
+    // ========================================
+    // ATTENDANCE OPERATIONS
     // ========================================
 
     async setAttendance(workerId, status, date, paymentAmount = 0) {
@@ -205,54 +208,73 @@ export class App {
             console.log('📝 Setting attendance:', { workerId, status, date, paymentAmount });
             
             const worker = this.state.workers.find(w => w.id === workerId);
-            if (!worker) throw new Error('Worker not found');
+            if (!worker) {
+                console.error('❌ Worker not found:', workerId);
+                this.showToast('Worker not found', 'error');
+                return false;
+            }
             
             let wageAmount = 0;
             if (status === 'present') wageAmount = worker.daily_rate;
             else if (status === 'half-day') wageAmount = worker.daily_rate / 2;
             
-            let advanceOverflow = 0;
-            let paymentRecorded = paymentAmount;
+            console.log('💰 Wage amount:', wageAmount);
             
-            if (paymentAmount > wageAmount) {
-                advanceOverflow = paymentAmount - wageAmount;
-                paymentRecorded = wageAmount;
-                
-                if (advanceOverflow > 0) {
-                    await supabase
-                        .rpc('issue_advance', {
-                            p_worker_id: workerId,
-                            p_amount: advanceOverflow,
-                            p_description: 'Payment overflow on ' + date
-                        });
-                }
-            }
-            
+            // Call RPC function
             const { data, error } = await supabase
                 .rpc('apply_attendance_with_payment', {
                     p_worker_id: workerId,
                     p_work_date: date,
                     p_status: status,
                     p_wage_amount: wageAmount,
-                    p_payment_amount: paymentRecorded
+                    p_payment_amount: paymentAmount
                 });
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ RPC Error:', error);
+                this.showToast('Failed to update attendance: ' + error.message, 'error');
+                return false;
+            }
             
             console.log('✅ Attendance RPC response:', data);
             
-            // RELOAD ALL DATA AND RE-RENDER
-            console.log('🔄 Reloading data...');
-            await Promise.all([
-                this.loadAttendance(),
-                this.loadTodaySummary(),
-                this.loadTransactions(),
-                this.loadWorkers()
-            ]);
+            // CRITICAL: Update state directly
+            console.log('🔄 Updating state directly...');
             
-            this.render();
+            // Update attendance in state
+            const existingIndex = this.state.attendance.findIndex(a => 
+                a.worker_id === workerId && a.work_date === date
+            );
             
-            console.log('✅ Attendance updated and UI refreshed!');
+            const newAttendance = {
+                worker_id: workerId,
+                work_date: date,
+                status: status,
+                wage_amount: wageAmount,
+                payment_amount: paymentAmount
+            };
+            
+            if (existingIndex !== -1) {
+                this.state.attendance[existingIndex] = { ...this.state.attendance[existingIndex], ...newAttendance };
+            } else {
+                this.state.attendance.push(newAttendance);
+            }
+            
+            // Update today's summary
+            if (date === new Date().toISOString().slice(0, 10)) {
+                if (!this.state.todaySummary) {
+                    this.state.todaySummary = { present_count: 0, total_wages: 0, total_payments: 0 };
+                }
+                if (status === 'present') {
+                    this.state.todaySummary.present_count = (this.state.todaySummary.present_count || 0) + 1;
+                }
+                this.state.todaySummary.total_wages = (this.state.todaySummary.total_wages || 0) + wageAmount;
+                this.state.todaySummary.total_payments = (this.state.todaySummary.total_payments || 0) + paymentAmount;
+            }
+            
+            // Force re-render
+            this.forceRender();
+            
             this.showToast('Attendance updated!', 'success');
             return true;
         } catch (err) {
@@ -266,55 +288,40 @@ export class App {
         try {
             console.log('💳 Updating payment:', { workerId, date, paymentAmount });
             
-            const { data: attData, error: attError } = await supabase
-                .from('attendance')
-                .select('*')
-                .eq('worker_id', workerId)
-                .eq('work_date', date)
-                .single();
+            // Find attendance record
+            const attIndex = this.state.attendance.findIndex(a => 
+                a.worker_id === workerId && a.work_date === date
+            );
             
-            if (attError) throw attError;
-            if (!attData) {
+            if (attIndex === -1) {
                 this.showToast('No attendance record found for this date', 'error');
                 return;
             }
             
-            let advanceOverflow = 0;
-            let paymentRecorded = paymentAmount;
+            // Update attendance in state
+            this.state.attendance[attIndex].payment_amount = paymentAmount;
             
-            if (paymentAmount > attData.wage_amount) {
-                advanceOverflow = paymentAmount - attData.wage_amount;
-                paymentRecorded = attData.wage_amount;
-                
-                if (advanceOverflow > 0) {
-                    await supabase
-                        .rpc('issue_advance', {
-                            p_worker_id: workerId,
-                            p_amount: advanceOverflow,
-                            p_description: 'Payment overflow on ' + date
-                        });
-                }
-            }
-            
+            // Update database
             const { error } = await supabase
                 .from('attendance')
-                .update({ 
-                    payment_amount: paymentRecorded,
-                    updated_at: new Date().toISOString()
-                })
+                .update({ payment_amount: paymentAmount })
                 .eq('worker_id', workerId)
                 .eq('work_date', date);
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ DB Update Error:', error);
+                this.showToast('Failed to update payment: ' + error.message, 'error');
+                return;
+            }
             
-            await Promise.all([
-                this.loadAttendance(),
-                this.loadTransactions(),
-                this.loadTodaySummary(),
-                this.loadWorkers()
-            ]);
+            // Update today's summary
+            if (date === new Date().toISOString().slice(0, 10) && this.state.todaySummary) {
+                this.state.todaySummary.total_payments = (this.state.todaySummary.total_payments || 0) + paymentAmount;
+            }
             
-            this.render();
+            // Force re-render
+            this.forceRender();
+            
             this.showToast('Payment updated successfully!', 'success');
         } catch (err) {
             console.error('❌ Error updating payment:', err);
@@ -333,12 +340,13 @@ export class App {
             
             if (error) throw error;
             
-            await Promise.all([
-                this.loadTransactions(),
-                this.loadWorkers()
-            ]);
+            // Reload data
+            await this.loadTransactions();
+            await this.loadWorkers();
             
-            this.render();
+            // Force re-render
+            this.forceRender();
+            
             this.showToast('Advance issued successfully!', 'success');
             return true;
         } catch (err) {
@@ -368,24 +376,12 @@ export class App {
             
             if (error) throw error;
             
-            if (parseFloat(initialAdvance) > 0) {
-                await supabase
-                    .from('worker_transactions')
-                    .insert({
-                        owner_id: this.state.user.id,
-                        worker_id: data.id,
-                        transaction_type: 'advance',
-                        amount: parseFloat(initialAdvance),
-                        description: 'Initial advance'
-                    });
-            }
+            // Add to state directly
+            this.state.workers.push(data);
             
-            await Promise.all([
-                this.loadWorkers(),
-                this.loadTransactions()
-            ]);
+            // Force re-render
+            this.forceRender();
             
-            this.render();
             this.showToast('Worker added successfully!', 'success');
             return true;
         } catch (err) {
@@ -409,8 +405,15 @@ export class App {
             
             if (error) throw error;
             
-            await this.loadWorkers();
-            this.render();
+            // Update state directly
+            const index = this.state.workers.findIndex(w => w.id === id);
+            if (index !== -1) {
+                this.state.workers[index] = data;
+            }
+            
+            // Force re-render
+            this.forceRender();
+            
             this.showToast('Worker updated successfully!', 'success');
             return true;
         } catch (err) {
@@ -430,8 +433,12 @@ export class App {
             
             if (error) throw error;
             
-            await this.loadWorkers();
-            this.render();
+            // Update state directly
+            this.state.workers = this.state.workers.filter(w => w.id !== id);
+            
+            // Force re-render
+            this.forceRender();
+            
             this.showToast('Worker deleted successfully!', 'success');
             return true;
         } catch (err) {
@@ -441,7 +448,7 @@ export class App {
     }
 
     // ========================================
-    // WORKER PROFILE VIEW - FIXED
+    // WORKER PROFILE VIEW
     // ========================================
 
     showWorkerProfile(workerId) {
@@ -465,7 +472,6 @@ export class App {
         const netBalance = totalWages - totalPaid - totalAdvances;
         
         const currentMonth = this.state.viewMonth;
-        const monthAttendance = workerAttendance.filter(a => a.work_date.startsWith(currentMonth));
         
         const modal = document.createElement('div');
         modal.id = 'workerProfileModal';
@@ -765,10 +771,6 @@ export class App {
         });
     }
 
-    // ========================================
-    // PROFILE MODAL
-    // ========================================
-
     showProfile() {
         const user = this.state.user;
         if (!user) return;
@@ -837,6 +839,7 @@ export class App {
     }
 
     render() {
+        console.log('🎨 Rendering app...');
         const app = document.getElementById('app');
         
         if (!this.state.user) {
@@ -856,5 +859,7 @@ export class App {
         this.components.dashboard.attachEvents(this);
         this.components.workerTable.attachEvents(this);
         this.components.attendanceTable.attachEvents(this);
+        
+        console.log('✅ App rendered successfully');
     }
 }

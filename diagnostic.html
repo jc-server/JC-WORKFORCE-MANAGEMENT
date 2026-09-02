@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diagnostic Check - Jaiswal Workforce</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: monospace; padding: 20px; background: #0f172a; color: #e2e8f0; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -18,17 +17,19 @@
         pre { background: #1e293b; padding: 10px; border-radius: 5px; overflow-x: auto; }
         button { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 10px 0; }
         button:hover { background: #2563eb; }
-        input { padding: 5px; margin: 5px; border-radius: 3px; border: 1px solid #334155; background: #0f172a; color: white; }
         .test-section { margin: 20px 0; padding: 15px; background: #1e293b; border-radius: 8px; }
         .test-title { font-weight: bold; margin-bottom: 10px; color: #fbbf24; }
+        #console-output { background: #000; padding: 10px; border-radius: 5px; margin-top: 20px; max-height: 300px; overflow-y: auto; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🔍 Jaiswal Workforce - System Diagnostic</h1>
         
+        <div id="console-output"></div>
+        
         <div class="test-section">
-            <div class="test-title">1. Supabase Configuration Test</div>
+            <div class="test-title">1. Supabase Connection Test</div>
             <button onclick="testSupabase()">Test Supabase Connection</button>
             <div id="supabaseResults"></div>
         </div>
@@ -70,28 +71,75 @@
         </div>
     </div>
 
+    <!-- Load Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <script>
-        // Supabase config
+        // Console output function
+        function logToConsole(message, type = 'info') {
+            const consoleDiv = document.getElementById('console-output');
+            const div = document.createElement('div');
+            div.style.color = type === 'error' ? '#f87171' : type === 'success' ? '#4ade80' : '#60a5fa';
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            consoleDiv.appendChild(div);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+        
+        // Supabase config - UPDATE THESE WITH YOUR ACTUAL VALUES
         const SUPABASE_URL = 'https://yqjuolwntlrnslaxyjsk.supabase.co';
-        const SUPABASE_ANON_KEY = window.__SUPABASE_ANON_KEY__ || 'your_key_here';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxanVvbHdudGxybnNsYXh5anNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxODgyNzUsImV4cCI6MjEwMzc2NDI3NX0.eXH0tVe7kmUCKOwiwqOatSrlVONMZoblGG7_jwyPcqU'; // REPLACE THIS!
         
-        // Initialize Supabase
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        logToConsole('Initializing diagnostic...');
+        logToConsole('Supabase URL: ' + SUPABASE_URL);
         
+        // Check if Supabase loaded
+        if (typeof window.supabase === 'undefined') {
+            logToConsole('❌ Supabase library NOT loaded! Check CDN script.', 'error');
+            document.getElementById('console-output').innerHTML += '<div style="color:red">❌ Supabase library NOT loaded! The script from CDN is missing or blocked.</div>';
+        } else {
+            logToConsole('✅ Supabase library loaded successfully');
+            
+            // Initialize Supabase
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            logToConsole('✅ Supabase client initialized');
+            
+            // Test connection immediately
+            supabase.auth.getSession().then(({ data, error }) => {
+                if (error) {
+                    logToConsole('❌ Session error: ' + error.message, 'error');
+                } else {
+                    logToConsole('✅ Session check: ' + (data.session ? 'Active' : 'None'));
+                    if (data.session) {
+                        logToConsole('👤 User: ' + data.session.user.email, 'success');
+                    }
+                }
+            }).catch(err => {
+                logToConsole('❌ Connection error: ' + err.message, 'error');
+            });
+        }
+        
+        // Add result function
         function addResult(containerId, status, message, detail = '') {
             const container = document.getElementById(containerId);
+            if (!container) {
+                logToConsole(`Container ${containerId} not found!`, 'error');
+                return;
+            }
             const div = document.createElement('div');
             div.className = `result ${status}`;
             div.innerHTML = `<strong>${message}</strong>${detail ? `<br><small>${detail}</small>` : ''}`;
             container.appendChild(div);
+            logToConsole(message + (detail ? ' - ' + detail : ''), status === 'fail' ? 'error' : status === 'pass' ? 'success' : 'info');
         }
         
         function clearResults(containerId) {
-            document.getElementById(containerId).innerHTML = '';
+            const container = document.getElementById(containerId);
+            if (container) container.innerHTML = '';
         }
         
         // Test 1: Supabase Connection
         async function testSupabase() {
+            logToConsole('Testing Supabase connection...');
             clearResults('supabaseResults');
             addResult('supabaseResults', 'info', '📡 Testing Supabase connection...');
             
@@ -100,17 +148,21 @@
                 
                 if (error) {
                     addResult('supabaseResults', 'fail', '❌ Supabase connection failed', error.message);
+                    logToConsole('❌ Error: ' + error.message, 'error');
                 } else {
                     addResult('supabaseResults', 'pass', '✅ Supabase connected successfully');
                     addResult('supabaseResults', 'pass', '✅ Can query workers table');
+                    logToConsole('✅ Workers query successful', 'success');
                 }
             } catch (err) {
                 addResult('supabaseResults', 'fail', '❌ Supabase connection error', err.message);
+                logToConsole('❌ Exception: ' + err.message, 'error');
             }
         }
         
         // Test 2: Authentication
         async function testAuth() {
+            logToConsole('Testing authentication...');
             clearResults('authResults');
             addResult('authResults', 'info', '🔑 Testing authentication...');
             
@@ -132,6 +184,7 @@
         
         // Test 3: Database Tables
         async function testTables() {
+            logToConsole('Testing database tables...');
             clearResults('tableResults');
             addResult('tableResults', 'info', '🗄️ Testing database tables...');
             
@@ -154,6 +207,7 @@
         
         // Test 4: Worker CRUD
         async function testWorkerCRUD() {
+            logToConsole('Testing Worker CRUD...');
             clearResults('crudResults');
             addResult('crudResults', 'info', '🔄 Testing Worker CRUD operations...');
             
@@ -232,6 +286,7 @@
         
         // Test 5: Attendance
         async function testAttendance() {
+            logToConsole('Testing attendance...');
             clearResults('attendanceResults');
             addResult('attendanceResults', 'info', '📋 Testing attendance marking...');
             
@@ -271,6 +326,7 @@
                 
                 if (error) {
                     addResult('attendanceResults', 'fail', '❌ Attendance marking failed', error.message);
+                    logToConsole('❌ RPC Error: ' + error.message, 'error');
                     
                     // Check if function exists
                     addResult('attendanceResults', 'info', 'Checking if function exists...');
@@ -284,11 +340,14 @@
                     
                     if (funcError && funcError.message.includes('Worker not found')) {
                         addResult('attendanceResults', 'pass', '✅ Function exists but worker not found');
+                        logToConsole('✅ Function exists', 'success');
                     } else if (funcError) {
                         addResult('attendanceResults', 'fail', '❌ Function might not exist', funcError.message);
+                        logToConsole('❌ Function error: ' + funcError.message, 'error');
                     }
                 } else {
                     addResult('attendanceResults', 'pass', '✅ Attendance marking works', JSON.stringify(data));
+                    logToConsole('✅ Attendance marked successfully', 'success');
                     
                     // Verify attendance saved
                     const { data: savedAtt } = await supabase
@@ -299,17 +358,21 @@
                     
                     if (savedAtt && savedAtt.length > 0) {
                         addResult('attendanceResults', 'pass', '✅ Attendance saved in database', `Status: ${savedAtt[0].status}`);
+                        logToConsole('✅ Attendance confirmed in database', 'success');
                     } else {
                         addResult('attendanceResults', 'fail', '❌ Attendance NOT saved in database');
+                        logToConsole('❌ Attendance not found in database after save', 'error');
                     }
                 }
             } catch (err) {
                 addResult('attendanceResults', 'fail', '❌ Attendance test error', err.message);
+                logToConsole('❌ Exception: ' + err.message, 'error');
             }
         }
         
         // Test 6: Financial Calculations
         async function testFinancials() {
+            logToConsole('Testing financial calculations...');
             clearResults('financialResults');
             addResult('financialResults', 'info', '🧮 Testing financial calculations...');
             
@@ -360,14 +423,18 @@
                     
                     addResult('financialResults', 'pass', `✅ ${worker.name}:`, 
                         `Wages: ₹${totalWages}, Advance: ₹${totalAdvance}, Paid: ₹${totalPaid}, Balance: ₹${netBalance}`);
+                    
+                    logToConsole(`${worker.name}: Wages ₹${totalWages}, Advance ₹${totalAdvance}, Paid ₹${totalPaid}, Balance ₹${netBalance}`, 'success');
                 }
             } catch (err) {
                 addResult('financialResults', 'fail', '❌ Financial test error', err.message);
+                logToConsole('❌ Exception: ' + err.message, 'error');
             }
         }
         
         // Run ALL Tests
         async function runAllTests() {
+            logToConsole('Running complete diagnostic...');
             clearResults('allResults');
             addResult('allResults', 'info', '🚀 Running complete diagnostic...');
             
@@ -379,12 +446,16 @@
             await testFinancials();
             
             addResult('allResults', 'pass', '✅ All tests completed!');
+            logToConsole('✅ Diagnostic complete!', 'success');
         }
         
-        // Auto-run on load
-        window.addEventListener('DOMContentLoaded', () => {
-            addResult('supabaseResults', 'info', 'Click "Test Supabase Connection" to start');
-        });
+        // Log initial status
+        logToConsole('Diagnostic page loaded. Click buttons to test.');
+        logToConsole(`Supabase URL: ${SUPABASE_URL}`);
+        
+        if (SUPABASE_ANON_KEY === 'YOUR_ACTUAL_ANON_KEY_HERE') {
+            logToConsole('⚠️ WARNING: Replace SUPABASE_ANON_KEY with your actual anon key!', 'error');
+        }
     </script>
 </body>
 </html>

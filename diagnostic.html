@@ -19,7 +19,7 @@
         button:hover { background: #2563eb; }
         .test-section { margin: 20px 0; padding: 15px; background: #1e293b; border-radius: 8px; }
         .test-title { font-weight: bold; margin-bottom: 10px; color: #fbbf24; }
-        #console-output { background: #000; padding: 10px; border-radius: 5px; margin-top: 20px; max-height: 300px; overflow-y: auto; }
+        #console-output { background: #000; padding: 10px; border-radius: 5px; margin-top: 20px; max-height: 300px; overflow-y: auto; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -71,7 +71,7 @@
         </div>
     </div>
 
-    <!-- Load Supabase -->
+    <!-- Load Supabase - This must be BEFORE our script -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
@@ -85,37 +85,66 @@
             consoleDiv.scrollTop = consoleDiv.scrollHeight;
         }
         
-        // Supabase config - UPDATE THESE WITH YOUR ACTUAL VALUES
+        // Supabase config - UPDATE WITH YOUR ACTUAL VALUES
         const SUPABASE_URL = 'https://yqjuolwntlrnslaxyjsk.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxanVvbHdudGxybnNsYXh5anNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxODgyNzUsImV4cCI6MjEwMzc2NDI3NX0.eXH0tVe7kmUCKOwiwqOatSrlVONMZoblGG7_jwyPcqU'; // REPLACE THIS!
         
         logToConsole('Initializing diagnostic...');
         logToConsole('Supabase URL: ' + SUPABASE_URL);
         
-        // Check if Supabase loaded
+        // Check if Supabase library loaded
         if (typeof window.supabase === 'undefined') {
-            logToConsole('❌ Supabase library NOT loaded! Check CDN script.', 'error');
-            document.getElementById('console-output').innerHTML += '<div style="color:red">❌ Supabase library NOT loaded! The script from CDN is missing or blocked.</div>';
+            logToConsole('❌ Supabase library NOT loaded!', 'error');
+            document.getElementById('console-output').innerHTML += '<div style="color:red">❌ Supabase library NOT loaded! Check CDN script.</div>';
         } else {
             logToConsole('✅ Supabase library loaded successfully');
+            logToConsole('Supabase global object type: ' + typeof window.supabase);
             
-            // Initialize Supabase
-            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            logToConsole('✅ Supabase client initialized');
-            
-            // Test connection immediately
-            supabase.auth.getSession().then(({ data, error }) => {
-                if (error) {
-                    logToConsole('❌ Session error: ' + error.message, 'error');
+            // Create client - this is the KEY FIX
+            let supabaseClient;
+            try {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                logToConsole('✅ Supabase client created successfully');
+                logToConsole('Client type: ' + typeof supabaseClient);
+                
+                // Test the client
+                if (supabaseClient && typeof supabaseClient.from === 'function') {
+                    logToConsole('✅ supabase.from is a function - CLIENT WORKS!');
                 } else {
-                    logToConsole('✅ Session check: ' + (data.session ? 'Active' : 'None'));
-                    if (data.session) {
-                        logToConsole('👤 User: ' + data.session.user.email, 'success');
-                    }
+                    logToConsole('❌ supabase.from is NOT a function', 'error');
+                    logToConsole('Client keys: ' + Object.keys(supabaseClient).join(', '));
                 }
-            }).catch(err => {
-                logToConsole('❌ Connection error: ' + err.message, 'error');
-            });
+                
+                // Store as global for use in test functions
+                window.supabaseClient = supabaseClient;
+                
+                // Test session
+                supabaseClient.auth.getSession().then(({ data, error }) => {
+                    if (error) {
+                        logToConsole('❌ Session error: ' + error.message, 'error');
+                    } else {
+                        logToConsole('✅ Session check: ' + (data.session ? 'Active' : 'None'));
+                        if (data.session) {
+                            logToConsole('👤 User: ' + data.session.user.email, 'success');
+                            window.currentUser = data.session.user;
+                        }
+                    }
+                }).catch(err => {
+                    logToConsole('❌ Connection error: ' + err.message, 'error');
+                });
+                
+            } catch (err) {
+                logToConsole('❌ Client creation failed: ' + err.message, 'error');
+            }
+        }
+        
+        // Helper to get the client
+        function getClient() {
+            if (!window.supabaseClient) {
+                logToConsole('❌ Supabase client not initialized!', 'error');
+                return null;
+            }
+            return window.supabaseClient;
         }
         
         // Add result function
@@ -143,8 +172,14 @@
             clearResults('supabaseResults');
             addResult('supabaseResults', 'info', '📡 Testing Supabase connection...');
             
+            const client = getClient();
+            if (!client) {
+                addResult('supabaseResults', 'fail', '❌ No Supabase client');
+                return;
+            }
+            
             try {
-                const { data, error } = await supabase.from('workers').select('*').limit(1);
+                const { data, error } = await client.from('workers').select('*').limit(1);
                 
                 if (error) {
                     addResult('supabaseResults', 'fail', '❌ Supabase connection failed', error.message);
@@ -166,14 +201,21 @@
             clearResults('authResults');
             addResult('authResults', 'info', '🔑 Testing authentication...');
             
+            const client = getClient();
+            if (!client) {
+                addResult('authResults', 'fail', '❌ No Supabase client');
+                return;
+            }
+            
             try {
-                const { data: { user }, error } = await supabase.auth.getUser();
+                const { data: { user }, error } = await client.auth.getUser();
                 
                 if (error) {
                     addResult('authResults', 'fail', '❌ Authentication error', error.message);
                 } else if (user) {
                     addResult('authResults', 'pass', '✅ User authenticated', `Email: ${user.email}`);
                     addResult('authResults', 'pass', '✅ User ID: ' + user.id);
+                    window.currentUser = user;
                 } else {
                     addResult('authResults', 'warn', '⚠️ No user logged in');
                 }
@@ -188,11 +230,17 @@
             clearResults('tableResults');
             addResult('tableResults', 'info', '🗄️ Testing database tables...');
             
+            const client = getClient();
+            if (!client) {
+                addResult('tableResults', 'fail', '❌ No Supabase client');
+                return;
+            }
+            
             const tables = ['workers', 'attendance', 'worker_transactions', 'audit_log'];
             
             for (const table of tables) {
                 try {
-                    const { data, error } = await supabase.from(table).select('*').limit(5);
+                    const { data, error } = await client.from(table).select('*').limit(5);
                     
                     if (error) {
                         addResult('tableResults', 'fail', `❌ ${table} table error`, error.message);
@@ -211,8 +259,14 @@
             clearResults('crudResults');
             addResult('crudResults', 'info', '🔄 Testing Worker CRUD operations...');
             
+            const client = getClient();
+            if (!client) {
+                addResult('crudResults', 'fail', '❌ No Supabase client');
+                return;
+            }
+            
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const { data: { user } } = await client.auth.getUser();
                 if (!user) {
                     addResult('crudResults', 'warn', '⚠️ Login required for CRUD test');
                     return;
@@ -228,7 +282,7 @@
                     active: true
                 };
                 
-                const { data: worker, error: createError } = await supabase
+                const { data: worker, error: createError } = await client
                     .from('workers')
                     .insert(testWorker)
                     .select()
@@ -241,7 +295,7 @@
                     
                     // Test Read
                     addResult('crudResults', 'info', 'Testing READ...');
-                    const { data: readData, error: readError } = await supabase
+                    const { data: readData, error: readError } = await client
                         .from('workers')
                         .select('*')
                         .eq('id', worker.id)
@@ -255,7 +309,7 @@
                     
                     // Test Update
                     addResult('crudResults', 'info', 'Testing UPDATE...');
-                    const { error: updateError } = await supabase
+                    const { error: updateError } = await client
                         .from('workers')
                         .update({ daily_rate: 600 })
                         .eq('id', worker.id);
@@ -268,7 +322,7 @@
                     
                     // Test Delete
                     addResult('crudResults', 'info', 'Testing DELETE...');
-                    const { error: deleteError } = await supabase
+                    const { error: deleteError } = await client
                         .from('workers')
                         .update({ active: false })
                         .eq('id', worker.id);
@@ -290,15 +344,21 @@
             clearResults('attendanceResults');
             addResult('attendanceResults', 'info', '📋 Testing attendance marking...');
             
+            const client = getClient();
+            if (!client) {
+                addResult('attendanceResults', 'fail', '❌ No Supabase client');
+                return;
+            }
+            
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const { data: { user } } = await client.auth.getUser();
                 if (!user) {
                     addResult('attendanceResults', 'warn', '⚠️ Login required for attendance test');
                     return;
                 }
                 
                 // Get first worker
-                const { data: workers } = await supabase
+                const { data: workers } = await client
                     .from('workers')
                     .select('*')
                     .eq('active', true)
@@ -315,7 +375,7 @@
                 addResult('attendanceResults', 'info', `Testing with worker: ${worker.name}`);
                 
                 // Test marking attendance
-                const { data, error } = await supabase
+                const { data, error } = await client
                     .rpc('apply_attendance_with_payment', {
                         p_worker_id: worker.id,
                         p_work_date: today,
@@ -330,7 +390,7 @@
                     
                     // Check if function exists
                     addResult('attendanceResults', 'info', 'Checking if function exists...');
-                    const { error: funcError } = await supabase.rpc('apply_attendance_with_payment', {
+                    const { error: funcError } = await client.rpc('apply_attendance_with_payment', {
                         p_worker_id: '00000000-0000-0000-0000-000000000000',
                         p_work_date: today,
                         p_status: 'present',
@@ -350,7 +410,7 @@
                     logToConsole('✅ Attendance marked successfully', 'success');
                     
                     // Verify attendance saved
-                    const { data: savedAtt } = await supabase
+                    const { data: savedAtt } = await client
                         .from('attendance')
                         .select('*')
                         .eq('worker_id', worker.id)
@@ -376,15 +436,21 @@
             clearResults('financialResults');
             addResult('financialResults', 'info', '🧮 Testing financial calculations...');
             
+            const client = getClient();
+            if (!client) {
+                addResult('financialResults', 'fail', '❌ No Supabase client');
+                return;
+            }
+            
             try {
-                const { data: { user } } = await supabase.auth.getUser();
+                const { data: { user } } = await client.auth.getUser();
                 if (!user) {
                     addResult('financialResults', 'warn', '⚠️ Login required for financial test');
                     return;
                 }
                 
                 // Get all workers
-                const { data: workers } = await supabase
+                const { data: workers } = await client
                     .from('workers')
                     .select('*')
                     .eq('active', true);
@@ -396,13 +462,13 @@
                 
                 for (const worker of workers) {
                     // Get attendance
-                    const { data: attendance } = await supabase
+                    const { data: attendance } = await client
                         .from('attendance')
                         .select('*')
                         .eq('worker_id', worker.id);
                     
                     // Get transactions
-                    const { data: transactions } = await supabase
+                    const { data: transactions } = await client
                         .from('worker_transactions')
                         .select('*')
                         .eq('worker_id', worker.id);

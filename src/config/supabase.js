@@ -6,5 +6,21 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'your_anon_key_
     console.error('❌ Missing Supabase configuration. Check index.html or .env file.');
 }
 
+// Create Supabase client with debug
+console.log('🔧 Initializing Supabase client...');
+console.log('📡 Supabase URL:', SUPABASE_URL);
+
 // Create Supabase client
 export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Test connection
+supabase.auth.getSession().then(({ data, error }) => {
+    if (error) {
+        console.error('❌ Supabase connection error:', error);
+    } else {
+        console.log('✅ Supabase connected successfully');
+        if (data.session) {
+            console.log('👤 Session exists:', data.session.user.email);
+        }
+    }
+});

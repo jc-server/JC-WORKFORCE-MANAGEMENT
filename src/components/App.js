@@ -98,21 +98,29 @@ export class App {
     }
 
     async loadWorkers() {
+        console.log('👷 Loading workers...');
         const { data, error } = await supabase
             .from('workers')
             .select('*')
             .eq('active', true)
             .order('name');
         
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Error loading workers:', error);
+            throw error;
+        }
+        
         this.state.workers = data || [];
+        console.log('✅ Workers loaded:', this.state.workers.length);
     }
 
     async loadTodaySummary() {
         try {
+            console.log('📈 Loading today summary...');
             const { data, error } = await supabase.rpc('get_today_summary');
             if (error) throw error;
             this.state.todaySummary = data || null;
+            console.log('✅ Today summary:', this.state.todaySummary);
         } catch (err) {
             console.warn('Today summary not available yet:', err);
             this.state.todaySummary = null;
@@ -124,6 +132,7 @@ export class App {
         const endDate = this.state.viewMonth + '-31';
         
         try {
+            console.log('📅 Loading attendance for', this.state.viewMonth);
             const { data, error } = await supabase
                 .from('attendance')
                 .select('*')
@@ -133,6 +142,7 @@ export class App {
             
             if (error) throw error;
             this.state.attendance = data || [];
+            console.log('✅ Attendance loaded:', this.state.attendance.length);
         } catch (err) {
             console.warn('Attendance not available yet:', err);
             this.state.attendance = [];
@@ -141,6 +151,7 @@ export class App {
 
     async loadTransactions() {
         try {
+            console.log('💳 Loading transactions...');
             const { data, error } = await supabase
                 .from('worker_transactions')
                 .select('*')
@@ -148,7 +159,7 @@ export class App {
             
             if (error) throw error;
             this.state.transactions = data || [];
-            console.log('💳 Transactions loaded:', this.state.transactions.length);
+            console.log('✅ Transactions loaded:', this.state.transactions.length);
         } catch (err) {
             console.warn('Could not load transactions:', err);
             this.state.transactions = [];
@@ -157,6 +168,7 @@ export class App {
 
     async handleLogin(email, password) {
         try {
+            console.log('🔑 Logging in...');
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password
@@ -164,12 +176,14 @@ export class App {
             
             if (error) throw error;
             
+            console.log('✅ Login successful:', data.user.email);
             this.state.user = data.user;
             await this.loadData();
             this.render();
             this.showToast('Login successful!', 'success');
             return true;
         } catch (err) {
+            console.error('❌ Login failed:', err);
             this.showToast('Login failed: ' + err.message, 'error');
             return false;
         }
@@ -195,6 +209,7 @@ export class App {
 
     async addWorker(name, role, dailyRate, initialAdvance = 0) {
         try {
+            console.log('➕ Adding worker:', name);
             const { data, error } = await supabase
                 .from('workers')
                 .insert({
@@ -210,9 +225,12 @@ export class App {
             
             if (error) throw error;
             
+            console.log('✅ Worker added:', data);
+            
             // If initial advance, record it
             if (parseFloat(initialAdvance) > 0) {
-                await supabase
+                console.log('💰 Recording initial advance:', initialAdvance);
+                const { error: txnError } = await supabase
                     .from('worker_transactions')
                     .insert({
                         owner_id: this.state.user.id,
@@ -221,6 +239,8 @@ export class App {
                         amount: parseFloat(initialAdvance),
                         description: 'Initial advance'
                     });
+                
+                if (txnError) console.error('❌ Error recording advance:', txnError);
             }
             
             this.state.workers.push(data);
@@ -229,6 +249,7 @@ export class App {
             this.showToast('Worker added successfully!', 'success');
             return true;
         } catch (err) {
+            console.error('❌ Error adding worker:', err);
             this.showToast('Failed to add worker: ' + err.message, 'error');
             return false;
         }
@@ -236,6 +257,7 @@ export class App {
 
     async updateWorker(id, name, role, dailyRate) {
         try {
+            console.log('✏️ Updating worker:', id);
             const { data, error } = await supabase
                 .from('workers')
                 .update({
@@ -256,6 +278,7 @@ export class App {
             this.showToast('Worker updated successfully!', 'success');
             return true;
         } catch (err) {
+            console.error('❌ Error updating worker:', err);
             this.showToast('Failed to update worker: ' + err.message, 'error');
             return false;
         }
@@ -265,6 +288,7 @@ export class App {
         if (!confirm('Are you sure you want to delete this worker?')) return false;
         
         try {
+            console.log('🗑️ Deleting worker:', id);
             const { error } = await supabase
                 .from('workers')
                 .update({ active: false })
@@ -277,23 +301,28 @@ export class App {
             this.showToast('Worker deleted successfully!', 'success');
             return true;
         } catch (err) {
+            console.error('❌ Error deleting worker:', err);
             this.showToast('Failed to delete worker: ' + err.message, 'error');
             return false;
         }
     }
 
     // ========================================
-    // ATTENDANCE OPERATIONS
+    // ATTENDANCE OPERATIONS - FIXED
     // ========================================
 
     async setAttendance(workerId, status, date, paymentAmount = 0) {
         try {
+            console.log('📝 Setting attendance:', { workerId, status, date, paymentAmount });
+            
             const worker = this.state.workers.find(w => w.id === workerId);
             if (!worker) throw new Error('Worker not found');
             
             let wageAmount = 0;
             if (status === 'present') wageAmount = worker.daily_rate;
             else if (status === 'half-day') wageAmount = worker.daily_rate / 2;
+            
+            console.log('💰 Wage amount:', wageAmount);
             
             // Smart advance & overpayment handling
             let advanceOverflow = 0;
@@ -306,6 +335,7 @@ export class App {
                 
                 // Record overflow as advance
                 if (advanceOverflow > 0) {
+                    console.log('💰 Advance overflow:', advanceOverflow);
                     const { data, error } = await supabase
                         .rpc('issue_advance', {
                             p_worker_id: workerId,
@@ -314,12 +344,12 @@ export class App {
                         });
                     
                     if (error) throw error;
-                    
-                    console.log(`💰 Advance overflow: ₹${advanceOverflow} added to worker's advance balance`);
+                    console.log('✅ Advance overflow recorded:', data);
                 }
             }
             
             // Apply attendance with smart payment handling
+            console.log('📤 Calling apply_attendance_with_payment...');
             const { data, error } = await supabase
                 .rpc('apply_attendance_with_payment', {
                     p_worker_id: workerId,
@@ -329,15 +359,29 @@ export class App {
                     p_payment_amount: paymentRecorded
                 });
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Error calling RPC:', error);
+                throw error;
+            }
             
-            await this.loadAttendance();
-            await this.loadTodaySummary();
-            await this.loadTransactions();
+            console.log('✅ Attendance RPC response:', data);
+            
+            // Reload all data
+            console.log('🔄 Reloading data...');
+            await Promise.all([
+                this.loadAttendance(),
+                this.loadTodaySummary(),
+                this.loadTransactions()
+            ]);
+            
+            // Force re-render
             this.render();
+            
+            console.log('✅ Attendance updated successfully!');
             this.showToast('Attendance updated!', 'success');
             return true;
         } catch (err) {
+            console.error('❌ Error setting attendance:', err);
             this.showToast('Failed to update attendance: ' + err.message, 'error');
             return false;
         }
@@ -345,18 +389,28 @@ export class App {
 
     async updatePayment(workerId, date, paymentAmount) {
         try {
+            console.log('💳 Updating payment:', { workerId, date, paymentAmount });
+            
             // Get existing attendance record
-            const { data: attData } = await supabase
+            const { data: attData, error: attError } = await supabase
                 .from('attendance')
                 .select('*')
                 .eq('worker_id', workerId)
                 .eq('work_date', date)
                 .single();
             
+            if (attError) {
+                console.error('❌ Error fetching attendance:', attError);
+                throw attError;
+            }
+            
             if (!attData) {
+                console.error('❌ No attendance record found');
                 this.showToast('No attendance record found for this date', 'error');
                 return;
             }
+            
+            console.log('📋 Existing attendance:', attData);
             
             // Smart advance handling
             let advanceOverflow = 0;
@@ -368,29 +422,49 @@ export class App {
                 
                 // Record overflow as advance
                 if (advanceOverflow > 0) {
-                    await supabase
+                    console.log('💰 Advance overflow:', advanceOverflow);
+                    const { data, error } = await supabase
                         .rpc('issue_advance', {
                             p_worker_id: workerId,
                             p_amount: advanceOverflow,
                             p_description: 'Payment overflow on ' + date
                         });
+                    
+                    if (error) throw error;
+                    console.log('✅ Advance overflow recorded:', data);
                 }
             }
             
             // Update attendance with payment
+            console.log('📤 Updating attendance payment...');
             const { error } = await supabase
                 .from('attendance')
-                .update({ payment_amount: paymentRecorded })
+                .update({ 
+                    payment_amount: paymentRecorded,
+                    updated_at: new Date().toISOString()
+                })
                 .eq('worker_id', workerId)
                 .eq('work_date', date);
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Error updating payment:', error);
+                throw error;
+            }
             
-            await this.loadAttendance();
-            await this.loadTransactions();
+            console.log('✅ Payment updated');
+            
+            // Reload data
+            await Promise.all([
+                this.loadAttendance(),
+                this.loadTransactions(),
+                this.loadTodaySummary()
+            ]);
+            
+            // Re-render
             this.render();
             this.showToast('Payment updated successfully!', 'success');
         } catch (err) {
+            console.error('❌ Error updating payment:', err);
             this.showToast('Failed to update payment: ' + err.message, 'error');
         }
     }
@@ -401,6 +475,7 @@ export class App {
 
     async issueAdvance(workerId, amount, description) {
         try {
+            console.log('💰 Issuing advance:', { workerId, amount, description });
             const { data, error } = await supabase
                 .rpc('issue_advance', {
                     p_worker_id: workerId,
@@ -410,10 +485,14 @@ export class App {
             
             if (error) throw error;
             
+            console.log('✅ Advance issued:', data);
             await this.loadTransactions();
+            await this.loadWorkers();
+            this.render();
             this.showToast('Advance issued successfully!', 'success');
             return true;
         } catch (err) {
+            console.error('❌ Error issuing advance:', err);
             this.showToast('Failed to issue advance: ' + err.message, 'error');
             return false;
         }
@@ -576,41 +655,183 @@ export class App {
     }
 
     // ========================================
-    // WORKER PROFILE VIEW
+    // WORKER PROFILE VIEW - FIXED
     // ========================================
 
     showWorkerProfile(workerId) {
+        console.log('👤 Showing worker profile:', workerId);
         const worker = this.state.workers.find(w => w.id === workerId);
         if (!worker) {
             this.showToast('Worker not found', 'error');
             return;
         }
         
-        import('./WorkerProfileModal.js').then(module => {
-            const profileModal = new module.WorkerProfileModal();
-            const modalHTML = profileModal.render(worker, this.state);
-            
-            const existing = document.getElementById('workerProfileModal');
-            if (existing) existing.remove();
-            
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = modalHTML;
-            document.body.appendChild(tempDiv.firstElementChild);
-            
-            // Add click outside to close
-            tempDiv.firstElementChild.addEventListener('click', (e) => {
-                if (e.target === tempDiv.firstElementChild) {
-                    tempDiv.firstElementChild.remove();
-                }
-            });
+        // Get worker-specific attendance
+        const workerAttendance = this.state.attendance.filter(a => a.worker_id === workerId);
+        console.log('📊 Worker attendance:', workerAttendance.length);
+        
+        // Get worker-specific transactions
+        const workerTransactions = this.state.transactions.filter(t => t.worker_id === workerId);
+        console.log('💳 Worker transactions:', workerTransactions.length);
+        
+        // Create profile modal content
+        const modal = document.createElement('div');
+        modal.id = 'workerProfileModal';
+        modal.className = 'modal-overlay';
+        
+        // Calculate financials
+        const totalWages = workerAttendance.reduce((sum, a) => sum + (a.wage_amount || 0), 0);
+        const totalPaid = workerTransactions
+            .filter(t => t.transaction_type === 'payment')
+            .reduce((sum, t) => sum + t.amount, 0);
+        const totalAdvances = workerTransactions
+            .filter(t => t.transaction_type === 'advance')
+            .reduce((sum, t) => sum + t.amount, 0);
+        const netBalance = totalWages - totalPaid - totalAdvances;
+        
+        // Get current month attendance
+        const currentMonth = this.state.viewMonth;
+        const monthAttendance = workerAttendance.filter(a => a.work_date.startsWith(currentMonth));
+        
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 800px;">
+                <div class="modal-header">
+                    <div class="modal-title">
+                        <i class="fas fa-user"></i> ${this.escapeHtml(worker.name)}
+                        <span class="badge badge-secondary">${this.escapeHtml(worker.role || 'Worker')}</span>
+                    </div>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                </div>
+                
+                <!-- Worker Info -->
+                <div class="worker-profile-info">
+                    <div class="worker-profile-field">
+                        <label>Daily Rate</label>
+                        <div class="value">₹${(worker.daily_rate || 0).toLocaleString()}</div>
+                    </div>
+                    <div class="worker-profile-field">
+                        <label>Total Wages</label>
+                        <div class="value">₹${totalWages.toLocaleString()}</div>
+                    </div>
+                    <div class="worker-profile-field">
+                        <label>Total Paid</label>
+                        <div class="value">₹${totalPaid.toLocaleString()}</div>
+                    </div>
+                    <div class="worker-profile-field">
+                        <label>Advances</label>
+                        <div class="value">₹${totalAdvances.toLocaleString()}</div>
+                    </div>
+                    <div class="worker-profile-field">
+                        <label>Net Balance</label>
+                        <div class="value" style="color: ${netBalance >= 0 ? '#4ade80' : '#f87171'};">
+                            ₹${netBalance.toLocaleString()}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Month Navigation -->
+                <div class="calendar-nav">
+                    <button class="btn btn-secondary btn-sm" onclick="window.__app.navigateWorkerMonth('${worker.id}', '${this.getPrevMonth(currentMonth)}')">
+                        <i class="fas fa-chevron-left"></i> Prev
+                    </button>
+                    <h3 class="calendar-month">${this.getMonthName(currentMonth)}</h3>
+                    <button class="btn btn-secondary btn-sm" onclick="window.__app.navigateWorkerMonth('${worker.id}', '${this.getNextMonth(currentMonth)}')">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                
+                <!-- Monthly Calendar -->
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Day</th>
+                                <th>Status</th>
+                                <th>Wage</th>
+                                <th>Payment</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${this.getCalendarDays(currentMonth, worker.id, workerAttendance)}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                    <button class="btn btn-warning" onclick="window.__app.showAdvanceModal('${worker.id}')">
+                        <i class="fas fa-money-bill-wave"></i> Issue Advance
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Click outside to close
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
         });
     }
 
-    navigateWorkerMonth(workerId, month) {
-        const worker = this.state.workers.find(w => w.id === workerId);
-        if (!worker) return;
+    getCalendarDays(month, workerId, attendance) {
+        const [year, mon] = month.split('-').map(Number);
+        const daysInMonth = new Date(year, mon, 0).getDate();
+        let html = '';
         
-        // Reload attendance for the new month
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${month}-${String(d).padStart(2, '0')}`;
+            const date = new Date(year, mon - 1, d);
+            const dayName = date.toLocaleDateString('en-IN', { weekday: 'short' });
+            
+            const att = attendance.find(a => a.work_date === dateStr);
+            const status = att ? att.status : '';
+            const wage = att ? att.wage_amount : 0;
+            const payment = att ? att.payment_amount : 0;
+            
+            html += `
+                <tr>
+                    <td>${d}</td>
+                    <td>${dayName}</td>
+                    <td>
+                        ${status ? `
+                            <span class="badge ${status === 'present' ? 'badge-success' : status === 'absent' ? 'badge-danger' : 'badge-warning'}">
+                                ${status === 'present' ? 'P' : status === 'absent' ? 'A' : '½'}
+                            </span>
+                        ` : '-'}
+                    </td>
+                    <td>${wage ? '₹' + wage.toLocaleString() : '-'}</td>
+                    <td>${payment ? '₹' + payment.toLocaleString() : '-'}</td>
+                </tr>
+            `;
+        }
+        return html;
+    }
+
+    getMonthName(month) {
+        const [year, mon] = month.split('-').map(Number);
+        return new Date(year, mon - 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+    }
+
+    getPrevMonth(month) {
+        const [year, mon] = month.split('-').map(Number);
+        const prevMon = mon - 1;
+        const prevYear = prevMon === 0 ? year - 1 : year;
+        const newMon = prevMon === 0 ? 12 : prevMon;
+        return `${prevYear}-${String(newMon).padStart(2, '0')}`;
+    }
+
+    getNextMonth(month) {
+        const [year, mon] = month.split('-').map(Number);
+        const nextMon = mon + 1;
+        const nextYear = nextMon === 13 ? year + 1 : year;
+        const newMon = nextMon === 13 ? 1 : nextMon;
+        return `${nextYear}-${String(newMon).padStart(2, '0')}`;
+    }
+
+    navigateWorkerMonth(workerId, month) {
+        console.log('📅 Navigating to month:', month);
         this.state.viewMonth = month;
         this.loadAttendance().then(() => {
             this.showWorkerProfile(workerId);

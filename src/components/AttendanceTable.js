@@ -71,16 +71,30 @@ export class AttendanceTable {
                                         </td>
                                         <td>
                                             <div class="attendance-btn-group">
-                                                ${['present', 'absent', 'half-day'].map(s => `
-                                                    <button class="attendance-btn attendance-btn-${s} ${status === s ? 'active' : ''}" 
-                                                            data-action="setAttendance" 
-                                                            data-worker="${worker.id}" 
-                                                            data-date="${today}" 
-                                                            data-status="${s}"
-                                                            title="${s === 'present' ? 'Present' : s === 'absent' ? 'Absent' : 'Half Day'}">
-                                                        ${s === 'present' ? 'P' : s === 'absent' ? 'A' : '½'}
-                                                    </button>
-                                                `).join('')}
+                                                <button class="attendance-btn attendance-btn-present ${status === 'present' ? 'active' : ''}" 
+                                                        data-action="setAttendance" 
+                                                        data-worker="${worker.id}" 
+                                                        data-date="${today}" 
+                                                        data-status="present"
+                                                        title="Present">
+                                                    P
+                                                </button>
+                                                <button class="attendance-btn attendance-btn-absent ${status === 'absent' ? 'active' : ''}" 
+                                                        data-action="setAttendance" 
+                                                        data-worker="${worker.id}" 
+                                                        data-date="${today}" 
+                                                        data-status="absent"
+                                                        title="Absent">
+                                                    A
+                                                </button>
+                                                <button class="attendance-btn attendance-btn-halfday ${status === 'half-day' ? 'active' : ''}" 
+                                                        data-action="setAttendance" 
+                                                        data-worker="${worker.id}" 
+                                                        data-date="${today}" 
+                                                        data-status="half-day"
+                                                        title="Half Day">
+                                                    ½
+                                                </button>
                                             </div>
                                             ${status === 'absent' ? '<div style="font-size:0.7rem; color:#f87171; text-align:center;">No Work</div>' : ''}
                                         </td>
@@ -130,7 +144,10 @@ export class AttendanceTable {
     attachEvents(app) {
         // Attendance buttons
         document.querySelectorAll('[data-action="setAttendance"]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 const workerId = e.currentTarget.dataset.worker;
                 const date = e.currentTarget.dataset.date;
                 const status = e.currentTarget.dataset.status;
@@ -139,25 +156,45 @@ export class AttendanceTable {
                 const paymentInput = document.querySelector(`[data-action="paymentInput"][data-worker="${workerId}"][data-date="${date}"]`);
                 const paymentAmount = paymentInput ? parseFloat(paymentInput.value) || 0 : 0;
                 
-                app.setAttendance(workerId, status, date, paymentAmount);
+                console.log('🎯 Attendance button clicked:', { workerId, date, status, paymentAmount });
+                
+                await app.setAttendance(workerId, status, date, paymentAmount);
             });
         });
         
         // Payment input changes
         document.querySelectorAll('[data-action="paymentInput"]').forEach(input => {
-            input.addEventListener('change', (e) => {
+            input.addEventListener('change', async (e) => {
                 const workerId = e.currentTarget.dataset.worker;
                 const date = e.currentTarget.dataset.date;
                 const paymentAmount = parseFloat(e.currentTarget.value) || 0;
                 
-                // Update payment                app.updatePayment(workerId, date, paymentAmount);
+                console.log('💳 Payment input changed:', { workerId, date, paymentAmount });
+                
+                await app.updatePayment(workerId, date, paymentAmount);
+            });
+            
+            // Also handle blur event
+            input.addEventListener('blur', async (e) => {
+                const workerId = e.currentTarget.dataset.worker;
+                const date = e.currentTarget.dataset.date;
+                const paymentAmount = parseFloat(e.currentTarget.value) || 0;
+                
+                console.log('💳 Payment input blurred:', { workerId, date, paymentAmount });
+                
+                await app.updatePayment(workerId, date, paymentAmount);
             });
         });
         
         // View Worker Profile
         document.querySelectorAll('[data-action="viewWorker"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 const id = e.currentTarget.dataset.id;
+                console.log('👤 View worker clicked:', id);
+                
                 app.showWorkerProfile(id);
             });
         });
@@ -165,7 +202,12 @@ export class AttendanceTable {
         // Advance Worker
         document.querySelectorAll('[data-action="advanceWorker"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 const id = e.currentTarget.dataset.id;
+                console.log('💰 Advance worker clicked:', id);
+                
                 app.showAdvanceModal(id);
             });
         });

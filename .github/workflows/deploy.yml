@@ -20,27 +20,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Build with env vars
-        run: |
-          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
-          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
-          npm run build
-      
       - name: Setup Pages
         uses: actions/configure-pages@v4
+      
+      - name: Inject Supabase Config
+        run: |
+          # Replace Supabase URL
+          sed -i "s|window.__SUPABASE_URL__ = '.*'|window.__SUPABASE_URL__ = '${{ secrets.VITE_SUPABASE_URL }}'|" index.html
+          
+          # Replace Supabase Anon Key
+          sed -i "s|window.__SUPABASE_ANON_KEY__ = '.*'|window.__SUPABASE_ANON_KEY__ = '${{ secrets.VITE_SUPABASE_ANON_KEY }}'|" index.html
+          
+          # Ensure .nojekyll exists
+          touch .nojekyll
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'dist'
+          path: '.'
       
       - name: Deploy to GitHub Pages
         id: deployment

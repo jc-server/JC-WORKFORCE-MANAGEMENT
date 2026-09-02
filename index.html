@@ -6,7 +6,13 @@
     <title>Jaiswal Workforce Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./src/styles/main.css?v=20240831" />
+    <link rel="stylesheet" href="./src/styles/main.css" />
+    
+    <!-- Supabase Configuration - These will be replaced during deployment -->
+    <script>
+        window.__SUPABASE_URL__ = 'https://yqjuolwntlrnslaxyjsk.supabase.co';
+        window.__SUPABASE_ANON_KEY__ = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxanVvbHdudGxybnNsYXh5anNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxODgyNzUsImV4cCI6MjEwMzc2NDI3NX0.eXH0tVe7kmUCKOwiwqOatSrlVONMZoblGG7_jwyPcqU';
+    </script>
 </head>
 <body>
     <div id="app"></div>
@@ -14,10 +20,10 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Supabase Client -->
+    <!-- Supabase Client (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Main App Entry with cache busting -->
-    <script type="module" src="./src/main.js?v=20240831"></script>
+    <!-- Main App Entry -->
+    <script type="module" src="./src/main.js"></script>
 </body>
 </html>

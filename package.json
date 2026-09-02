@@ -1,0 +1,13 @@
+{
+  "name": "jaiswal-workforce",
+  "version": "1.0.0",
+  "description": "Workforce Management System",
+  "type": "module",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve .",
+    "build": "echo 'No build needed - static site'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

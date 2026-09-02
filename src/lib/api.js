@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase.js';
 import { State } from './state.js';
 
 export const api = {
-    // Workers
+    // Workers CRUD
     async getWorkers() {
         const { data, error } = await supabase
             .from('workers')
@@ -29,10 +29,14 @@ export const api = {
         return data;
     },
 
-    async updateWorker(id, updates) {
+    async updateWorker(id, name, role, dailyRate) {
         const { data, error } = await supabase
             .from('workers')
-            .update(updates)
+            .update({
+                name: name.trim(),
+                role: role.trim() || 'Worker',
+                daily_rate: parseFloat(dailyRate) || 0
+            })
             .eq('id', id)
             .select()
             .single();
@@ -64,7 +68,7 @@ export const api = {
 
     async getAttendance(month) {
         const startDate = month + '-01';
-        const endDate = month + '-' + String(this.getMonthDays(month)).padStart(2, '0');
+        const endDate = month + '-31';
         
         const { data, error } = await supabase
             .from('attendance')
@@ -76,7 +80,7 @@ export const api = {
         return data;
     },
 
-    // Financial
+    // Transactions
     async issueAdvance(workerId, amount, description) {
         const { data, error } = await supabase
             .rpc('issue_advance', {
@@ -88,6 +92,7 @@ export const api = {
         return data;
     },
 
+    // Today's Summary
     async getTodaySummary() {
         const { data, error } = await supabase
             .rpc('get_today_summary');

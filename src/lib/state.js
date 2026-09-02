@@ -5,7 +5,7 @@ export const State = {
     attendance: [],
     todaySummary: null,
     selectedWorkerId: null,
-    viewMonth: new Date().toISOString().slice(0, 7), // YYYY-MM
+    viewMonth: new Date().toISOString().slice(0, 7),
     editingWorker: null,
 };
 

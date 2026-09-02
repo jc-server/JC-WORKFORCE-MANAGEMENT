@@ -1,5 +1,5 @@
-// This file can be updated after build
+// Runtime configuration loaded from window object
 export const runtimeConfig = {
-    supabaseUrl: 'https://yqjuolwntlrnslaxyjsk.supabase.co',
-    supabaseAnonKey: 'your_rotated_key_here'
+    supabaseUrl: window.__SUPABASE_URL__ || '',
+    supabaseAnonKey: window.__SUPABASE_ANON_KEY__ || ''
 };

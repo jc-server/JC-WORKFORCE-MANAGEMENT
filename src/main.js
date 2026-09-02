@@ -1,7 +1,6 @@
-import { App } from './components/App.js?v=20240831';
+import { App } from './components/App.js';
 
-console.log('🚀 Jaiswal Workforce Management System loaded!');
-console.log('📦 Version: 20240831');
+console.log('🚀 Jaiswal Workforce Management System started!');
 
 // Initialize the app
 const app = new App();

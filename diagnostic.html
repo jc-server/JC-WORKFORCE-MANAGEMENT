@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SuperLabor - One-Click Diagnostic Tool</title>
+    
+    <style>
+        /* ========================================
+           MODERN DARK THEME STYLES
+           ======================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .header .badge {
+            display: inline-block;
+            background: #1e293b;
+            color: #fbbf24;
+            padding: 0.25rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid #334155;
+            margin-top: 0.5rem;
+        }
+
+        /* ===== MAIN BUTTON ===== */
+        .diagnostic-btn {
+            width: 100%;
+            padding: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #0f172a;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .diagnostic-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(251, 191, 36, 0.3);
+        }
+
+        .diagnostic-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .diagnostic-btn .spinner {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #0f172a;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .diagnostic-btn.loading .spinner {
+            display: block;
+        }
+
+        .diagnostic-btn.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ===== PROGRESS ===== */
+        .progress-container {
+            background: #1e293b;
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            border: 1px solid #334155;
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #334155;
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 9999px;
+        }
+
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+
+        /* ===== STATS GRID ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        .stat-card.critical .number { color: #f87171; }
+        .stat-card.high .number { color: #fbbf24; }
+        .stat-card.medium .number { color: #60a5fa; }
+        .stat-card.low .number { color: #4ade80; }
+        .stat-card.total .number { color: #e2e8f0; }
+
+        /* ===== ISSUES LIST ===== */
+        .issues-container {
+            display: none;
+        }
+
+        .issues-container.active {
+            display: block;
+        }
+
+        .issue-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s ease;
+            border-left: 4px solid #334155;
+        }
+
+        .issue-card:hover {
+            border-color: #475569;
+        }
+
+        .issue-card.critical { border-left-color: #f87171; }
+        .issue-card.high { border-left-color: #fbbf24; }
+        .issue-card.medium { border-left-color: #60a5fa; }
+        .issue-card.low { border-left-color: #4ade80; }
+
+        .issue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .issue-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .issue-severity {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 0.15rem 0.6rem;
+            border-radius: 9999px;
+            white-space: nowrap;
+        }
+
+        .issue-severity.critical { background: #7f1d1d; color: #f87171; }
+        .issue-severity.high { background: #78350f; color: #fbbf24; }
+        .issue-severity.medium { background: #1e3a5f; color: #60a5fa; }
+        .issue-severity.low { background: #064e3b; color: #4ade80; }
+
+        .issue-file {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .issue-description {
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .issue-suggestion {
+            background: #0f172a;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            border-left: 3px solid #fbbf24;
+        }
+
+        .issue-suggestion strong {
+            color: #fbbf24;
+        }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #94a3b8;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .header h1 { font-size: 1.75rem; }
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+            .diagnostic-btn { font-size: 1rem; padding: 1rem; }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* ===== TOAST ===== */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+
+        .toast.success { background: #064e3b; color: #4ade80; border: 1px solid #065f46; }
+        .toast.error { background: #7f1d1d; color: #f87171; border: 1px solid #991b1b; }
+        .toast.info { background: #1e3a5f; color: #60a5fa; border: 1px solid #1e4a7a; }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* ===== COLLAPSIBLE ===== */
+        .collapsible {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .collapsible::after {
+            content: ' ▶';
+            color: #94a3b8;
+        }
+
+        .collapsible.open::after {
+            content: ' ▼';
+        }
+
+        .collapsible-content {
+            display: none;
+            margin-top: 0.5rem;
+        }
+
+        .collapsible-content.open {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- ===== HEADER ===== -->
+    <div class="header">
+        <h1>🔍 SuperLabor Diagnostic</h1>
+        <p>Complete project health check in one click</p>
+        <span class="badge">⚡ GitHub + Supabase + VS Code Ready</span>
+    </div>
+
+    <!-- ===== MAIN BUTTON ===== -->
+    <button class="diagnostic-btn" id="runDiagnostic">
+        <span class="btn-text">🚀 Run Complete Diagnostic</span>
+        <span class="spinner"></span>
+    </button>
+
+    <!-- ===== PROGRESS ===== -->
+    <div class="progress-container" id="progressContainer">
+        <div class="progress-text">
+            <span id="progressLabel">Initializing...</span>
+            <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+    </div>
+
+    <!-- ===== STATS ===== -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card total">
+            <span class="number" id="totalIssues">0</span>
+            <span class="label">Total Issues</span>
+        </div>
+        <div class="stat-card critical">
+            <span class="number" id="criticalIssues">0</span>
+            <span class="label">🔴 Critical</span>
+        </div>
+        <div class="stat-card high">
+            <span class="number" id="highIssues">0</span>
+            <span class="label">🟡 High</span>
+        </div>
+        <div class="stat-card medium">
+            <span class="number" id="mediumIssues">0</span>
+            <span class="label">🟢 Medium</span>
+        </div>
+        <div class="stat-card low">
+            <span class="number" id="lowIssues">0</span>
+            <span class="label">🔵 Low</span>
+        </div>
+    </div>
+
+    <!-- ===== ISSUES ===== -->
+    <div class="issues-container" id="issuesContainer">
+        <h2 style="margin-bottom: 1rem; color: #fbbf24;">📋 Issues Found</h2>
+        <div id="issuesList"></div>
+    </div>
+
+    <!-- ===== EMPTY STATE ===== -->
+    <div id="emptyState" class="empty-state">
+        <div class="icon">✅</div>
+        <h3>Ready to diagnose</h3>
+        <p>Click the button above to run a complete health check on your project</p>
+    </div>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ============================================================
+//  SUPABASE - ONE-CLICK DIAGNOSTIC ENGINE
+// ============================================================
+
+class DiagnosticEngine {
+    constructor() {
+        this.results = {
+            issues: [],
+            summary: {
+                total: 0,
+                critical: 0,
+                high: 0,
+                medium: 0,
+                low: 0
+            },
+            timestamp: new Date().toISOString()
+        };
+        this.progress = 0;
+        this.totalChecks = 25;
+        this.currentCheck = 0;
+    }
+
+    // ============================================================
+    //  MAIN RUN METHOD
+    // ============================================================
+
+    async run() {
+        this.updateProgress('Starting diagnostic...', 0);
+
+        // Phase 1: Environment Check
+        await this.checkEnvironment();
+
+        // Phase 2: Security Check
+        await this.checkSecurity();
+
+        // Phase 3: GitHub Integration
+        await this.checkGitHub();
+
+        // Phase 4: Supabase Integration
+        await this.checkSupabase();
+
+        // Phase 5: Code Quality
+        await this.checkCodeQuality();
+
+        // Phase 6: Performance
+        await this.checkPerformance();
+
+        // Phase 7: Database Schema
+        await this.checkDatabaseSchema();
+
+        this.updateProgress('✅ Diagnostic complete!', 100);
+        return this.results;
+    }
+
+    // ============================================================
+    //  PHASE 1: ENVIRONMENT CHECK
+    // ============================================================
+
+    async checkEnvironment() {
+        this.updateProgress('Checking environment...', 5);
+
+        // Check Browser
+        const browser = this.getBrowserInfo();
+        this.addIssue({
+            severity: browser.isModern ? 'low' : 'high',
+            category: 'Environment',
+            title: 'Browser Compatibility',
+            description: `Running on ${browser.name} ${browser.version}`,
+            suggestion: browser.isModern ? '✓ Modern browser detected' : 'Please use a modern browser (Chrome, Firefox, Edge)',
+            file: 'System'
+        });
+
+        // Check localStorage
+        try {
+            localStorage.setItem('_test_', 'test');
+            localStorage.removeItem('_test_');
+            this.addIssue({
+                severity: 'low',
+                category: 'Environment',
+                title: 'Local Storage Available',
+                description: 'localStorage is working correctly',
+                suggestion: '✓ localStorage is available for offline support',
+                file: 'System'
+            });
+        } catch (e) {
+            this.addIssue({
+                severity: 'high',
+                category: 'Environment',
+                title: 'Local Storage Unavailable',
+                description: 'localStorage is not accessible',
+                suggestion: 'Enable localStorage or check browser settings',
+                file: 'System'
+            });
+        }
+
+        // Check Service Worker support
+        if ('serviceWorker' in navigator) {
+            this.addIssue({
+                severity: 'low',
+                category: 'Environment',
+                title: 'Service Worker Supported',
+                description: 'Service Workers are available for offline support',
+                suggestion: '✓ Service Worker support detected',
+                file: 'System'
+            });
+        } else {
+            this.addIssue({
+                severity: 'medium',
+                category: 'Environment',
+                title: 'Service Worker Not Supported',
+                description: 'This browser does not support Service Workers',
+                suggestion: 'Consider using a fallback for offline support',
+                file: 'System'
+            });
+        }
+    }
+
+    // ============================================================
+    //  PHASE 2: SECURITY CHECK
+    // ============================================================
+
+    async checkSecurity() {
+        this.updateProgress('Checking security...', 15);
+
+        // Check for exposed ANON KEY in page source
+        const pageSource = document.documentElement.outerHTML;
+        const anonKeyPatterns = [
+            'YOUR_ANON_KEY_HERE',
+            'your_anon_key_here',
+            'your_supabase_anon_key',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' // JWT pattern
+        ];
+
+        let exposedSecrets = [];
+        for (const pattern of anonKeyPatterns) {
+            if (pageSource.includes(pattern) && !pageSource.includes('.env.example')) {
+                exposedSecrets.push(pattern);
+            }
+        }
+
+        if (exposedSecrets.length > 0) {
+            this.addIssue({
+                severity: 'critical',
+                category: 'Security',
+                title: '🚨 Exposed ANON KEY detected!',
+                description: `Found ${exposedSecrets.length} exposed secret(s) in page source: ${exposedSecrets.join(', ')}`,
+                suggestion: 'Move all secrets to environment variables or GitHub Secrets. NEVER hardcode secrets in HTML.',
+                file: 'index.html'
+            });
+        }
+
+        // Check for .env file
+        try {
+            const response = await fetch('/.env');
+            if (response.ok) {
+                this.addIssue({
+                    severity: 'critical',
+                    category: 'Security',
+                    title: '⚠️ .env file is publicly accessible!',
+                    description: 'Your .env file can be accessed directly. This is a security risk.',
+                    suggestion: 'Add .env to .gitignore and configure your server to block .env files.',
+                    file: '.env'
+                });
+            }
+        } catch (e) {
+            // .env not accessible - good
+            this.addIssue({
+                severity: 'low',
+                category: 'Security',
+                title: '.env file not publicly accessible',
+                description: '✓ .env file is properly protected',
+                suggestion: '✓ Good security practice detected',
+                file: 'System'
+            });
+        }
+
+        // Check for HTTPS
+        if (window.location.protocol === 'https:') {
+            this.addIssue({
+                severity: 'low',
+                category: 'Security',
+                title: '✅ HTTPS in use',
+                description: 'Connection is secure using HTTPS',
+                suggestion: '✓ Good security practice detected',
+                file: 'System'
+            });
+        } else {
+            this.addIssue({
+                severity: 'high',
+                category: 'Security',
+                title: '⚠️ Not using HTTPS',
+                description: 'The page is served over HTTP (insecure)',
+                suggestion: 'Enable HTTPS for your deployment (GitHub Pages supports HTTPS automatically)',
+                file: 'System'
+            });
+        }
+
+        // Check for GitHub Secrets
+        // This is a visual check - we can't actually read secrets
+        this.addIssue({
+            severity: 'medium',
+            category: 'Security',
+            title: 'GitHub Secrets Check',
+            description: '⚠️ Verify GitHub Secrets are configured: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY',
+            suggestion: 'Go to Settings → Secrets and variables → Actions and add your secrets',
+            file: '.github/workflows/deploy.yml'
+        });
+    }
+
+    // ============================================================
+    //  PHASE 3: GITHUB INTEGRATION
+    // ============================================================
+
+    async checkGitHub() {
+        this.updateProgress('Checking GitHub integration...', 35);
+
+        // Check for .github directory
+        try {
+            const response = await fetch('/.github/workflows/deploy.yml');
+            if (response.ok) {
+                this.addIssue({
+                    severity: 'low',
+                    category: 'GitHub',
+                    title: '✅ GitHub Actions configured',
+                    description: 'deploy.yml workflow file found',
+                    suggestion: '✓ GitHub Actions is properly set up',
+                    file: '.github/workflows/deploy.yml'
+                });
+
+                // Check workflow content
+                const content = await response.text();
+                if (content.includes('VITE_SUPABASE_URL') || content.includes('VITE_SUPABASE_ANON_KEY')) {
+                    this.addIssue({
+                        severity: 'low',
+                        category: 'GitHub',
+                        title: '✅ Environment variables in workflow',
+                        description: 'Secrets are referenced in the deploy workflow',
+                        suggestion: '✓ Ensure secrets are set in GitHub Settings',
+                        file: '.github/workflows/deploy.yml'
+                    });
+                } else {
+                    this.addIssue({
+                        severity: 'high',
+                        category: 'GitHub',
+                        title: '⚠️ Missing environment variables in workflow',
+                        description: 'deploy.yml may not be using GitHub Secrets',
+                        suggestion: 'Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your workflow',
+                        file: '.github/workflows/deploy.yml'
+                    });
+                }
+            } else {
+                this.addIssue({
+                    severity: 'high',
+                    category: 'GitHub',
+                    title: '⚠️ GitHub Actions workflow missing',
+                    description: 'No deploy.yml found in .github/workflows/',
+                    suggestion: 'Create a GitHub Actions workflow for automated deployment',
+                    file: 'Missing'
+                });
+            }
+        } catch (e) {
+            this.addIssue({
+                severity: 'medium',
+                category: 'GitHub',
+                title: '⚠️ .github directory not accessible',
+                description: 'Could not check GitHub configuration',
+                suggestion: 'Ensure .github/workflows/ exists in your project',
+                file: 'System'
+            });
+        }
+
+        // Check for .gitignore
+        try {
+            const response = await fetch('/.gitignore');
+            if (response.ok) {
+                const content = await response.text();
+                const hasEnv = content.includes('.env');
+                const hasNodeModules = content.includes('node_modules');
+                const hasVSCode = content.includes('.vscode');
+
+                if (hasEnv && hasNodeModules && hasVSCode) {
+                    this.addIssue({
+                        severity: 'low',
+                        category: 'GitHub',
+                        title: '✅ Good .gitignore configuration',
+                        description: '.gitignore includes all important exclusions',
+                        suggestion: '✓ Good practice: .env, node_modules, and .vscode are ignored',
+                        file: '.gitignore'
+                    });
+                } else {
+                    this.addIssue({
+                        severity: 'medium',
+                        category: 'GitHub',
+                        title: '⚠️ .gitignore may be incomplete',
+                        description: `Missing exclusions: ${!hasEnv ? '.env ' : ''}${!hasNodeModules ? 'node_modules ' : ''}${!hasVSCode ? '.vscode ' : ''}`,
+                        suggestion: 'Add .env, node_modules, and .vscode to .gitignore',
+                        file: '.gitignore'
+                    });
+                }
+            } else {
+                this.addIssue({
+                    severity: 'high',
+                    category: 'GitHub',
+                    title: '⚠️ .gitignore file missing',
+                    description: 'No .gitignore found in the project',
+                    suggestion: 'Create a .gitignore file to exclude sensitive files from version control',
+                    file: 'Missing'
+                });
+            }
+        } catch (e) {
+            // Skip
+        }
+    }
+
+    // ============================================================
+    //  PHASE 4: SUPABASE INTEGRATION
+    // ============================================================
+
+    async checkSupabase() {
+        this.updateProgress('Checking Supabase integration...', 55);
+
+        // Check Supabase client
+        const hasSupabase = typeof window.supabase !== 'undefined';
+        if (hasSupabase) {
+            this.addIssue({
+                severity: 'low',
+                category: 'Supabase',
+                title: '✅ Supabase client loaded',
+                description: 'Supabase client library is available',
+                suggestion: '✓ Supabase SDK is properly loaded',
+                file: 'index.html'
+            });
+
+            // Check Supabase configuration
+            const supabaseUrl = window.__SUPABASE_URL__;
+            const anonKey = window.__SUPABASE_ANON_KEY__;
+
+            if (supabaseUrl && anonKey && anonKey !== 'YOUR_ANON_KEY_HERE') {
+                this.addIssue({
+                    severity: 'low',
+                    category: 'Supabase',
+                    title: '✅ Supabase configured',
+                    description: `Using Supabase URL: ${supabaseUrl.substring(0, 30)}...`,
+                    suggestion: '✓ Supabase configuration detected',
+                    file: 'config/supabase.js'
+                });
+
+                // Try to connect to Supabase
+                try {
+                    const supabase = window.supabase.createClient(supabaseUrl, anonKey);
+                    const { data, error } = await supabase.auth.getSession();
+                    
+                    if (!error) {
+                        this.addIssue({
+                            severity: 'low',
+                            category: 'Supabase',
+                            title: '✅ Supabase connection successful',
+                            description: 'Successfully connected to Supabase',
+                            suggestion: '✓ Supabase is working correctly',
+                            file: 'System'
+                        });
+
+                        if (data.session) {
+                            this.addIssue({
+                                severity: 'low',
+                                category: 'Supabase',
+                                title: '✅ User authenticated',
+                                description: `Authenticated as: ${data.session.user.email}`,
+                                suggestion: '✓ User is logged in',
+                                file: 'System'
+                            });
+                        } else {
+                            this.addIssue({
+                                severity: 'medium',
+                                category: 'Supabase',
+                                title: '⚠️ Not logged in',
+                                description: 'No active Supabase session found',
+                                suggestion: 'Log in to test authentication features',
+                                file: 'System'
+                            });
+                        }
+                    } else {
+                        this.addIssue({
+                            severity: 'high',
+                            category: 'Supabase',
+                            title: '❌ Supabase connection failed',
+                            description: `Error: ${error.message}`,
+                            suggestion: 'Check your Supabase URL and ANON KEY. Ensure Supabase is running.',
+                            file: 'config/supabase.js'
+                        });
+                    }
+                } catch (e) {
+                    this.addIssue({
+                        severity: 'high',
+                        category: 'Supabase',
+                        title: '❌ Supabase client error',
+                        description: `Error: ${e.message}`,
+                        suggestion: 'Check your Supabase configuration',
+                        file: 'config/supabase.js'
+                    });
+                }
+            } else {
+                this.addIssue({
+                    severity: 'critical',
+                    category: 'Supabase',
+                    title: '❌ Supabase credentials not configured',
+                    description: 'SUPABASE_URL or ANON_KEY is missing or using placeholder',
+                    suggestion: 'Update index.html with your actual Supabase credentials or use environment variables',
+                    file: 'index.html'
+                });
+            }
+        } else {
+            this.addIssue({
+                severity: 'critical',
+                category: 'Supabase',
+                title: '❌ Supabase client not found',
+                description: 'Supabase library not loaded in the page',
+                suggestion: 'Add Supabase CDN script to index.html: https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+                file: 'index.html'
+            });
+        }
+    }
+
+    // ============================================================
+    //  PHASE 5: CODE QUALITY
+    // ============================================================
+
+    async checkCodeQuality() {
+        this.updateProgress('Checking code quality...', 75);
+
+        // Check for main.js
+        try {
+            const response = await fetch('/src/main.js');
+            if (response.ok) {
+                this.addIssue({
+                    severity: 'low',
+                    category: 'Code Quality',
+                    title: '✅ main.js found',
+                    description: 'Application entry point exists',
+                    suggestion: '✓ Good project structure',
+                    file: 'src/main.js'
+                });
+
+                // Check for imports
+                const content = await response.text();
+                if (content.includes('import')) {
+                    this.addIssue({
+                        severity: 'low',
+                        category: 'Code Quality',
+                        title: '✅ ES Modules in use',
+                        description: 'Using ES module imports for cleaner code organization',
+                        suggestion: '✓ Modern JavaScript patterns detected',
+                        file: 'src/main.js'
+                    });
+                }
+            } else {
+                this.addIssue({
+                    severity: 'high',
+                    category: 'Code Quality',
+                    title: '⚠️ main.js not found',
+                    description: 'Application entry point may be missing',
+                    suggestion: 'Ensure src/main.js exists and is properly set up',
+                    file: 'src/main.js'
+                });
+            }
+        } catch (e) {
+            // Skip
+        }
+
+        // Check for CSS
+        try {
+            const response = await fetch('/src/styles/main.css');
+            if (response.ok) {
+                this.addIssue({
+                    severity: 'low',
+                    category: 'Code Quality',
+                    title: '✅ Styles found',
+                    description: 'Main CSS file exists',
+                    suggestion: '✓ Styles are properly organized',
+                    file: 'src/styles/main.css'
+                });
+            }
+        } catch (e) {
+            // Skip
+        }
+
+        // Check for components
+        const components = [
+            'App.js',
+            'Dashboard.js',
+            'WorkerTable.js',
+            'AttendanceTable.js',
+            'FinancialLedger.js',
+            'Login.js'
+        ];
+
+        let foundComponents = 0;
+        for (const comp of components) {
+            try {
+                const response = await fetch(`/src/components/${comp}`);
+                if (response.ok) {
+                    foundComponents++;
+                }
+            } catch (e) {
+                // Skip
+            }
+        }
+
+        if (foundComponents === components.length) {
+            this.addIssue({
+                severity: 'low',
+                category: 'Code Quality',
+                title: '✅ All components found',
+                description: `Found ${foundComponents}/${components.length} expected components`,
+                suggestion: '✓ Good component organization',
+                file: 'src/components/'
+            });
+        } else {
+            this.addIssue({
+                severity: 'medium',
+                category: 'Code Quality',
+                title: '⚠️ Some components missing',
+                description: `Found ${foundComponents}/${components.length} expected components`,
+                suggestion: 'Ensure all required components are present: ' + components.join(', '),
+                file: 'src/components/'
+            });
+        }
+
+        // Check for service worker
+        try {
+            const response = await fetch('/service-worker.js');
+            if (response.ok) {
+                this.addIssue({
+                    severity: 'low',
+                    category: 'Code Quality',
+                    title: '✅ Service worker found',
+                    description: 'service-worker.js exists for offline support',
+                    suggestion: '✓ Offline support is configured',
+                    file: 'service-worker.js'
+                });
+            } else {
+                this.addIssue({
+                    severity: 'medium',
+                    category: 'Code Quality',
+                    title: '⚠️ Service worker missing',
+                    description: 'No service-worker.js found in root directory',
+                    suggestion: 'Add a service worker for offline support',
+                    file: 'Missing'
+                });
+            }
+        } catch (e) {
+            // Skip
+        }
+    }
+
+    // ============================================================
+    //  PHASE 6: PERFORMANCE
+    // ============================================================
+
+    async checkPerformance() {
+        this.updateProgress('Checking performance...', 90);
+
+        // Check page load time
+        if (window.performance) {
+            const perfData = window.performance.timing;
+            const loadTime = perfData.loadEventEnd - perfData.navigationStart;
+            
+            if (loadTime < 2000) {
+                this.addIssue({
+                    severity: 'low',
+                    category: 'Performance',
+                    title: '✅ Fast page load',
+                    description: `Page loaded in ${loadTime}ms`,
+                    suggestion: '✓ Good performance',
+                    file: 'System'
+                });
+            } else if (loadTime < 5000) {
+                this.addIssue({
+                    severity: 'medium',
+                    category: 'Performance',
+                    title: '⚠️ Moderate page load time',
+                    description: `Page loaded in ${loadTime}ms`,
+                    suggestion: 'Consider optimizing images and assets, or using lazy loading',
+                    file: 'System'
+                });
+            } else {
+                this.addIssue({
+                    severity: 'high',
+                    category: 'Performance',
+                    title: '❌ Slow page load',
+                    description: `Page loaded in ${loadTime}ms`,
+                    suggestion: 'Optimize assets, reduce JavaScript bundle size, use code splitting',
+                    file: 'System'
+                });
+            }
+        }
+
+        // Check for large assets
+        const assets = [
+            'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
+            'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+        ];
+
+        for (const asset of assets) {
+            try {
+                const response = await fetch(asset);
+                if (response.ok) {
+                    const contentLength = response.headers.get('content-length');
+                    if (contentLength && parseInt(contentLength) > 500000) {
+                        this.addIssue({
+                            severity: 'medium',
+                            category: 'Performance',
+                            title: '⚠️ Large library loaded',
+                            description: `${asset} is ${(parseInt(contentLength) / 1024 / 1024).toFixed(1)}MB`,
+                            suggestion: 'Consider using a CDN with compression or loading on demand',
+                            file: 'index.html'
+                        });
+                    }
+                }
+            } catch (e) {
+                // Skip
+            }
+        }
+    }
+
+    // ============================================================
+    //  PHASE 7: DATABASE SCHEMA
+    // ============================================================
+
+    async checkDatabaseSchema() {
+        this.updateProgress('Checking database schema...', 95);
+
+        // Check for migration files
+        const migrations = [
+            '001_initial_schema.sql',
+            '002_rls_policies.sql',
+            '003_financial_ledger.sql',
+            '004_indexes_views.sql',
+            '005_documents.sql'
+        ];
+
+        let foundMigrations = 0;
+        for (const migration of migrations) {
+            try {
+                const response = await fetch(`/supabase/migrations/${migration}`);
+                if (response.ok) {
+                    foundMigrations++;
+                }
+            } catch (e) {
+                // Skip
+            }
+        }
+
+        if (foundMigrations === migrations.length) {
+            this.addIssue({
+                severity: 'low',
+                category: 'Database',
+                title: '✅ All migrations found',
+                description: `Found ${foundMigrations}/${migrations.length} migration files`,
+                suggestion: '✓ Database migrations are complete',
+                file: 'supabase/migrations/'
+            });
+        } else {
+            this.addIssue({
+                severity: 'high',
+                category: 'Database',
+                title: '⚠️ Some migrations missing',
+                description: `Found ${foundMigrations}/${migrations.length} migration files`,
+                suggestion: 'Ensure all migrations are present: ' + migrations.join(', '),
+                file: 'supabase/migrations/'
+            });
+        }
+
+        // Check for database check file
+        try {
+            const response = await fetch('/supabase/database_check.sql');
+            if (response.ok) {
+                this.addIssue({
+                    severity: 'low',
+                    category: 'Database',
+                    title: '✅ Database check script found',
+                    description: 'database_check.sql exists for verification',
+                    suggestion: '✓ Database diagnostics available',
+                    file: 'supabase/database_check.sql'
+                });
+            }
+        } catch (e) {
+            // Skip
+        }
+
+        // Check for seed data
+        try {
+            const response = await fetch('/supabase/seed.sql');
+            if (response.ok) {
+                this.addIssue({
+                    severity: 'low',
+                    category: 'Database',
+                    title: '✅ Seed data found',
+                    description: 'seed.sql exists for test data',
+                    suggestion: '✓ Database seeding is available',
+                    file: 'supabase/seed.sql'
+                });
+            }
+        } catch (e) {
+            // Skip
+        }
+    }
+
+    // ============================================================
+    //  UTILITY METHODS
+    // ============================================================
+
+    addIssue({ severity, category, title, description, suggestion, file }) {
+        const issue = {
+            id: `ISSUE-${String(this.results.issues.length + 1).padStart(4, '0')}`,
+            severity: severity || 'medium',
+            category: category || 'General',
+            title: title || 'Uncategorized issue',
+            description: description || 'No description provided',
+            suggestion: suggestion || 'No suggestion provided',
+            file: file || 'Unknown'
+        };
+
+        this.results.issues.push(issue);
+        this.results.summary.total++;
+
+        switch (severity) {
+            case 'critical': this.results.summary.critical++; break;
+            case 'high': this.results.summary.high++; break;
+            case 'medium': this.results.summary.medium++; break;
+            case 'low': this.results.summary.low++; break;
+        }
+    }
+
+    getBrowserInfo() {
+        const ua = navigator.userAgent;
+        let name = 'Unknown';
+        let version = 'Unknown';
+        let isModern = false;
+
+        if (ua.includes('Chrome')) {
+            name = 'Chrome';
+            version = ua.match(/Chrome\/(\d+)/)?.[1] || 'Unknown';
+            isModern = parseInt(version) >= 80;
+        } else if (ua.includes('Firefox')) {
+            name = 'Firefox';
+            version = ua.match(/Firefox\/(\d+)/)?.[1] || 'Unknown';
+            isModern = parseInt(version) >= 70;
+        } else if (ua.includes('Safari')) {
+            name = 'Safari';
+            version = ua.match(/Version\/(\d+)/)?.[1] || 'Unknown';
+            isModern = parseInt(version) >= 14;
+        } else if (ua.includes('Edge')) {
+            name = 'Edge';
+            version = ua.match(/Edg\/(\d+)/)?.[1] || 'Unknown';
+            isModern = parseInt(version) >= 90;
+        }
+
+        return { name, version, isModern };
+    }
+
+    updateProgress(label, percent) {
+        this.progress = percent;
+        document.getElementById('progressLabel').textContent = label;
+        document.getElementById('progressPercent').textContent = `${Math.round(percent)}%`;
+        document.getElementById('progressFill').style.width = `${Math.round(percent)}%`;
+
+        if (percent < 100) {
+            document.getElementById('progressContainer').classList.add('active');
+        } else {
+            setTimeout(() => {
+                document.getElementById('progressContainer').classList.remove('active');
+            }, 1000);
+        }
+    }
+
+    // ============================================================
+    //  UI RENDER
+    // ============================================================
+
+    renderResults() {
+        const { issues, summary } = this.results;
+
+        // Update stats
+        document.getElementById('totalIssues').textContent = summary.total;
+        document.getElementById('criticalIssues').textContent = summary.critical;
+        document.getElementById('highIssues').textContent = summary.high;
+        document.getElementById('mediumIssues').textContent = summary.medium;
+        document.getElementById('lowIssues').textContent = summary.low;
+
+        // Render issues
+        const container = document.getElementById('issuesList');
+        const issuesContainer = document.getElementById('issuesContainer');
+
+        if (issues.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">🎉</div>
+                    <h3>No issues found!</h3>
+                    <p>Your project looks great! All checks passed.</p>
+                </div>
+            `;
+            issuesContainer.classList.add('active');
+            return;
+        }
+
+        // Group by severity
+        const grouped = {
+            critical: issues.filter(i => i.severity === 'critical'),
+            high: issues.filter(i => i.severity === 'high'),
+            medium: issues.filter(i => i.severity === 'medium'),
+            low: issues.filter(i => i.severity === 'low')
+        };
+
+        let html = '';
+
+        // Render each group
+        for (const [severity, items] of Object.entries(grouped)) {
+            if (items.length === 0) continue;
+
+            const labels = {
+                critical: '🔴 Critical Issues',
+                high: '🟡 High Priority',
+                medium: '🟢 Medium Priority',
+                low: '🔵 Low Priority'
+            };
+
+            html += `
+                <h3 style="margin: 1.5rem 0 1rem 0; color: ${severity === 'critical' ? '#f87171' : severity === 'high' ? '#fbbf24' : severity === 'medium' ? '#60a5fa' : '#4ade80'}">
+                    ${labels[severity]} (${items.length})
+                </h3>
+            `;
+
+            for (const issue of items) {
+                html += `
+                    <div class="issue-card ${issue.severity}">
+                        <div class="issue-header">
+                            <span class="issue-title">${issue.id}: ${issue.title}</span>
+                            <span class="issue-severity ${issue.severity}">${issue.severity.toUpperCase()}</span>
+                        </div>
+                        <div class="issue-file">📁 ${issue.file}</div>
+                        <div class="issue-description">${issue.description}</div>
+                        <div class="issue-suggestion">
+                            <strong>💡 Suggestion:</strong> ${issue.suggestion}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        container.innerHTML = html;
+        issuesContainer.classList.add('active');
+        document.getElementById('emptyState').style.display = 'none';
+    }
+
+    // ============================================================
+    //  TOAST NOTIFICATIONS
+    // ============================================================
+
+    showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 4000);
+    }
+}
+
+// ============================================================
+//  MAIN EXECUTION
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('runDiagnostic');
+    const engine = new DiagnosticEngine();
+
+    btn.addEventListener('click', async () => {
+        // Disable button
+        btn.disabled = true;
+        btn.classList.add('loading');
+
+        // Clear previous results
+        document.getElementById('issuesList').innerHTML = '';
+        document.getElementById('issuesContainer').classList.remove('active');
+
+        try {
+            // Run diagnostic
+            await engine.run();
+
+            // Render results
+            engine.renderResults();
+
+            // Show toast
+            const totalIssues = engine.results.summary.total;
+            if (totalIssues === 0) {
+                engine.showToast('🎉 No issues found! Great work!', 'success');
+            } else if (engine.results.summary.critical > 0) {
+                engine.showToast(`⚠️ Found ${totalIssues} issues including ${engine.results.summary.critical} critical!`, 'error');
+            } else {
+                engine.showToast(`📋 Found ${totalIssues} issues to review`, 'info');
+            }
+        } catch (error) {
+            console.error('Diagnostic error:', error);
+            engine.showToast('❌ Diagnostic failed: ' + error.message, 'error');
+        } finally {
+            // Re-enable button
+            btn.disabled = false;
+            btn.classList.remove('loading');
+        }
+    });
+});
+</script>
+
+</body>
+</html>

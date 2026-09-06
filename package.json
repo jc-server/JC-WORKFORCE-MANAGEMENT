@@ -1,13 +1,24 @@
 {
-  "name": "jaiswal-workforce",
-  "version": "1.0.0",
-  "description": "Workforce Management System",
+  "name": "superlabor",
+  "version": "2.0.0",
+  "description": "SuperLabor - Complete Workforce Management System",
   "type": "module",
   "scripts": {
     "start": "npx serve .",
     "dev": "npx serve .",
-    "build": "echo 'No build needed - static site'"
+    "build": "echo 'No build needed - static site'",
+    "deploy": "git add . && git commit -m 'Deploy' && git push origin main"
   },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {},
+  "keywords": [
+    "workforce",
+    "management",
+    "attendance",
+    "payroll",
+    "construction",
+    "labor"
+  ],
+  "author": "Jaiswal Constructuion",
+  "license": "MIT"
 }

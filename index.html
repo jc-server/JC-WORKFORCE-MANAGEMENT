@@ -3,27 +3,59 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Jaiswal Workforce Management</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./src/styles/main.css" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>SuperLabor - Workforce Management</title>
     
-    <!-- Supabase Configuration - These will be replaced during deployment -->
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="./src/styles/main.css" />
+    <link rel="stylesheet" href="./src/styles/themes/dark.css" />
+    <link rel="stylesheet" href="./src/styles/themes/light.css" />
+    <link rel="stylesheet" href="./src/styles/components.css" />
+    
+    <!-- Supabase Configuration -->
     <script>
         window.__SUPABASE_URL__ = 'https://yqjuolwntlrnslaxyjsk.supabase.co';
         window.__SUPABASE_ANON_KEY__ = 'YOUR_ANON_KEY_HERE';
+        window.__APP_VERSION__ = '2.0.0';
     </script>
 </head>
 <body>
+    <!-- App Root -->
     <div id="app"></div>
     
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- Notification Center -->
+    <div class="notification-center" id="notificationCenter"></div>
+    
+    <!-- Theme Toggle -->
+    <div class="theme-toggle-container">
+        <button id="themeToggle" class="theme-toggle-btn" title="Toggle Theme">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
 
-    <!-- Supabase Client (CDN) -->
+    <!-- Supabase Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Main App Entry -->
+    <!-- Service Worker for Offline Support -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then(() => console.log('✅ Service Worker registered'))
+                .catch(err => console.error('❌ Service Worker error:', err));
+        }
+    </script>
+    
+    <!-- Main App -->
     <script type="module" src="./src/main.js"></script>
 </body>
 </html>

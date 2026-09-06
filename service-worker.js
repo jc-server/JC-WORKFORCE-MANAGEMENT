@@ -39,18 +39,26 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Fetch event - serve from cache if available
+// Fetch event - serve from cache
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
             .then(cached => {
                 if (cached) {
+                    // Update cache in background
+                    fetch(event.request)
+                        .then(response => {
+                            if (response.ok) {
+                                caches.open(CACHE_NAME).then(cache => {
+                                    cache.put(event.request, response);
+                                });
+                            }
+                        })
+                        .catch(() => {});
                     return cached;
                 }
-                
                 return fetch(event.request)
                     .then(response => {
-                        // Cache new assets
                         if (response.ok && event.request.method === 'GET') {
                             const cloned = response.clone();
                             caches.open(CACHE_NAME)
@@ -61,7 +69,6 @@ self.addEventListener('fetch', event => {
                         return response;
                     })
                     .catch(() => {
-                        // Offline fallback
                         return new Response(
                             '<h1>Offline</h1><p>Please check your internet connection.</p>',
                             {
@@ -70,33 +77,5 @@ self.addEventListener('fetch', event => {
                         );
                     });
             })
-    );
-});
-
-// Handle push notifications
-self.addEventListener('push', event => {
-    const data = event.data.json();
-    
-    const options = {
-        body: data.message,
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        vibrate: [200, 100, 200],
-        data: {
-            url: data.url || '/'
-        }
-    };
-    
-    event.waitUntil(
-        self.registration.showNotification(data.title, options)
-    );
-});
-
-// Handle notification click
-self.addEventListener('notificationclick', event => {
-    event.notification.close();
-    
-    event.waitUntil(
-        clients.openWindow(event.notification.data.url || '/')
     );
 });

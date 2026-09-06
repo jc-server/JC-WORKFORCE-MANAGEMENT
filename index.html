@@ -22,7 +22,7 @@
     <!-- Supabase Configuration -->
     <script>
         window.__SUPABASE_URL__ = 'https://yqjuolwntlrnslaxyjsk.supabase.co';
-        window.__SUPABASE_ANON_KEY__ = 'YOUR_ANON_KEY_HERE';
+        window.__SUPABASE_ANON_KEY__ = 'YOUR_ANON_KEY_HERE';  // ⚠️ Replace with your actual key
         window.__APP_VERSION__ = '2.0.0';
     </script>
 </head>
@@ -43,7 +43,7 @@
         </button>
     </div>
 
-    <!-- Supabase Client -->
+    <!-- Supabase Client - FIX: Load before main.js -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- Service Worker for Offline Support -->
@@ -55,7 +55,7 @@
         }
     </script>
     
-    <!-- Main App -->
+    <!-- Main App - Load AFTER Supabase -->
     <script type="module" src="./src/main.js"></script>
 </body>
 </html>
